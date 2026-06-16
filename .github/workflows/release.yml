@@ -42,9 +42,22 @@ jobs:
           echo "--- release contents ---"
           ls -la release
 
+      - name: Extract changelog section for this tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # print the "## [VERSION] ..." section up to the next "## [" heading
+          awk -v ver="$VERSION" '
+            /^## \[/ { if (p) exit; if ($0 ~ ("^## \\[" ver "\\]")) p=1 }
+            p { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Fiw AntiCheat $VERSION" > RELEASE_NOTES.md
+          fi
+          echo "--- release notes ---"; cat RELEASE_NOTES.md
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: release/*.jar
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
