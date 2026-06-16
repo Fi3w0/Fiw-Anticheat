@@ -1,0 +1,27 @@
+pluginManagement {
+    repositories {
+        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+        maven { name = 'NeoForged'; url = 'https://maven.neoforged.net/releases' }
+        maven { name = 'MinecraftForge'; url = 'https://maven.minecraftforge.net/' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+plugins {
+    // Auto-provisions the JDK toolchains modules request (e.g. Java 21 for NeoForge)
+    // so the build works regardless of which JDK launched Gradle.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'fiw-anticheat'
+
+include 'core'
+include 'fabric-1.20.1'
+include 'fabric-1.21.1'
+include 'neoforge-1.21.1'
+include 'fabric-1.21.11'
+include 'neoforge-1.21.11'
+// NeoForge has no 1.20.1 build (earliest is 20.2.x / MC 1.20.2), so the 1.20.1
+// Forge-family loader is covered by MinecraftForge 1.20.1 instead.
+include 'forge-1.20.1'

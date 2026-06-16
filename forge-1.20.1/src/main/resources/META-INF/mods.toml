@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "All Rights Reserved"
+issueTrackerURL = ""
+
+[[mods]]
+modId = "fiw_mods_api"
+version = "${version}"
+displayName = "Fiw AntiCheat"
+logoFile = "icon.png"
+authors = "Fiw"
+description = '''
+Professional mod verification and admin anti-cheat enforcement: blacklist unfair
+mods, enforce official modpacks, and inspect player mod profiles. (Forge 1.20.1)
+'''
+
+[[dependencies.fiw_mods_api]]
+    modId = "forge"
+    mandatory = true
+    versionRange = "[47.4,)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.fiw_mods_api]]
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "[1.20.1,1.21)"
+    ordering = "NONE"
+    side = "BOTH"

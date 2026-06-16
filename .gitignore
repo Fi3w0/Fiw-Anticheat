@@ -1,0 +1,50 @@
+# Build output
+.gradle/
+build/
+out/
+bin/
+*.class
+
+# Loom / Forge / NeoForge dev runs + caches
+run/
+run-server/
+runs/
+logs/
+.fabric/
+*.log
+
+# Packaged release jars (publish via GitHub Releases, not in git)
+/jars/
+
+# Keep the Gradle wrapper jar tracked even if jar rules get added later
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE / editors
+.idea/
+.vscode/
+.eclipse/
+.settings/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# AI agent tooling / instructions (kept out of the published repo)
+.claude/
+AGENTS.md
+CLAUDE.md
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
+
+# Runtime config/data generated on a live server (never commit real ones).
+# Anchored to repo root so the core 'config' SOURCE package is NOT ignored.
+/config/
+/run*/config/
+**/profiles/
+whitelist.json

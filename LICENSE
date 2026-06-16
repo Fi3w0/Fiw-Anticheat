@@ -1,0 +1,71 @@
+Fiw AntiCheat License (Attribution, Non-Commercial)
+
+Copyright (c) 2026 Fi3w0.
+
+This license covers Fiw AntiCheat: its source code, compiled binaries, assets,
+documentation, and related files (the "Software"). Fi3w0 is the original author
+and copyright holder.
+
+1. Permission
+
+You are free to use, study, modify, fork, and redistribute the Software and
+modified or derivative versions of it, for private or public use, provided you
+comply with the Attribution requirements (Section 2) and the Non-Commercial
+requirement (Section 3).
+
+2. Attribution (required)
+
+Any use, fork, modified build, port, or derivative work must:
+
+- give clear and visible credit to "Fi3w0" as the original creator of Fiw
+  AntiCheat;
+- include a link to the original project where reasonably possible (for example
+  the Modrinth page or the source repository);
+- keep all existing copyright, license, and attribution notices intact in the
+  source and in any distributed build;
+- clearly state when a build is a modified version or a fork, and not present it
+  as the official Fiw AntiCheat.
+
+3. Non-Commercial (no selling)
+
+You may not sell the Software or any fork or derivative of it, charge money for
+it, paywall access to it, or include it in a paid product or paid service,
+without prior written permission from Fi3w0.
+
+Running the Software on a Minecraft server is allowed, including on servers that
+accept donations or are otherwise monetized — that is normal use, not selling the
+Software itself.
+
+4. Branding
+
+You may credit Fiw AntiCheat as the origin, but you may not use the "Fiw" name,
+the Fiw AntiCheat name, icons, or branding in a way that implies your fork is
+official or endorsed by Fi3w0.
+
+5. Ownership
+
+Fi3w0 retains copyright and authorship of the original Software. This license
+grants the permissions above but does not transfer ownership of the original
+work.
+
+6. Third-Party Components
+
+This license applies only to Fiw AntiCheat code, assets, and documentation.
+Third-party libraries, Minecraft, Fabric, Forge, NeoForge, Gradle, and other
+dependencies remain governed by their own licenses.
+
+7. Warranty Disclaimer
+
+The Software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to merchantability, fitness for a particular
+purpose, and non-infringement.
+
+8. Limitation of Liability
+
+To the maximum extent permitted by law, Fi3w0 is not liable for any claim,
+damage, data loss, server issue, ban dispute, lost profit, or other liability
+arising from use of, inability to use, or reliance on the Software.
+
+Contact:
+
+- Discord: fi3w0

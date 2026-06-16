@@ -1,0 +1,18 @@
+# Normalize line endings
+* text=auto eol=lf
+
+# Scripts that must keep their platform endings
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+gradlew text eol=lf
+
+# Binary assets
+*.jar binary
+*.png binary
+*.ico binary
+
+# Don't skew GitHub's language stats with the wrapper or docs
+gradle/wrapper/** linguist-vendored
+gradlew          linguist-vendored
+gradlew.bat      linguist-vendored
+*.md             linguist-documentation

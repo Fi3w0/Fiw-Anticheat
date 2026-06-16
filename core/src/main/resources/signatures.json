@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Wurst Client",
+    "category": "cheat_clients",
+    "match": { "ids": ["wurst", "wurst-client", "wurstclient"], "packages": ["net.wurstclient"], "mixins": ["wurst.mixins.json"] }
+  },
+  {
+    "name": "Meteor Client / Addons",
+    "category": "cheat_clients",
+    "match": { "ids": ["meteor", "meteor-client", "meteorclient", "meteor-rejects", "meteorrejects"], "packages": ["meteordevelopment.meteorclient", "anticope.rejects"], "mixins": ["meteor-client.mixins.json", "meteor-rejects.mixins.json"] }
+  },
+  {
+    "name": "LiquidBounce Client",
+    "category": "cheat_clients",
+    "match": { "ids": ["liquidbounce", "liquid-bounce", "liquidbounce-nextgen", "liquidbounceplus", "liquidbounce-plus"], "packages": ["net.ccbluex.liquidbounce"], "mixins": ["liquidbounce.mixins.json"] }
+  },
+  {
+    "name": "BleachHack / MatHax / ThunderHack family",
+    "category": "cheat_clients",
+    "match": { "ids": ["bleachhack", "bleachhack-epearl", "mathax", "mathax-client", "mathaxclient", "thunderhack", "thunderhack-recode", "blackout", "nightx", "jexclient", "cornos"], "packages": ["org.bleachhack", "xyz.mathax", "thunder.hack", "me.blackout"] }
+  },
+  {
+    "name": "Popular hacked clients",
+    "category": "cheat_clients",
+    "match": { "ids": ["impact", "aristois", "inertia", "rusherhack", "future", "flyhack", "fly-hack", "aoba", "aobaclient", "aoba-client", "forgehax", "sigma", "jigsaw", "huzuni", "wolfram", "flux", "vape", "salhack", "kami", "kami-blue", "lambda", "lambda-client", "seppuku", "phobos", "konas", "pyro", "gamesense", "abyss", "cosmos", "earthhack", "3arthh4ck", "rhack", "oyvey", "wurstplus", "wurst-plus", "wurstplus-two", "wurst-plus-two", "creepy-salhack", "paragon"], "packages": ["com.aristois", "me.rigamortis", "net.aoba", "com.lambda", "me.alpha432", "me.earth", "me.rebirthclient", "dev.luminous"] }
+  },
+  {
+    "name": "Mod detection bypass / evasion",
+    "category": "cheat_clients",
+    "match": { "ids": ["moddetectionpreventer", "mod-detection-preventer", "mod_detection_preventer", "mdp", "antimoddetection", "anti-mod-detection", "modhider", "mod-hider"], "packages": ["com.github.zly2006.mod_detection_preventer", "io.github.zekerzhayard.modmenuhider"] }
+  },
+  {
+    "name": "Generic X-Ray",
+    "category": "xray",
+    "match": { "ids": ["xray", "x-ray", "x_ray", "xraymod", "xray-mod", "advancedxray", "advanced-xray", "advanced_xray", "xrayultimate", "xray-ultimate", "xrayplus", "xray-fabric", "xray-forge", "xray-neoforge", "xrayer", "betterxray", "better-xray", "entity-xray", "entityxray", "cavefinder", "cave-finder", "seedcracker", "seedcrackerx", "seed-cracker", "seedmapper", "seed-map", "seedmap"], "packages": ["com.xray", "pl.minecraftgames.xray", "pro.mikey", "net.advancedxray", "kaptainwutax.seedcracker"] }
+  },
+  {
+    "name": "Fullbright / Gamma utilities",
+    "category": "fullbright",
+    "match": { "ids": ["fullbright", "full-bright", "fullbrightx", "gammautils", "gamma-utils", "fullbrightnesstoggle", "fullbrightness-toggle", "fullbright-toggle", "true-fullbright", "truefullbright", "dynamic-fullbright", "dynamicfullbright", "resource-gamma-utils", "resourcegammautils", "gamma-bright", "gammabright", "boosted-brightness", "boostedbrightness", "simply-bright", "simplybright", "nightvision", "night-vision"], "packages": ["com.gammautils", "dev.lambdaurora.lambdynlights.fullbright"] }
+  },
+  {
+    "name": "Freecam",
+    "category": "freecam",
+    "match": { "ids": ["freecam", "free-cam", "easy-freecam", "easyfreecam", "freecammc", "freecam-mc", "aether-freecam", "freecamplus", "freecam-plus", "fpv-freecam", "fpvfreecam", "free-camera", "freecamera", "ftofreecam", "f-to-freecam", "fairfreecam"], "packages": ["net.xolt.freecam"], "mixins": ["freecam.mixins.json"] }
+  },
+  {
+    "name": "Replay Mod",
+    "category": "replay",
+    "match": { "ids": ["replaymod"], "packages": ["com.replaymod"], "mixins": ["mixins.replaymod.core.json"] }
+  },
+  {
+    "name": "Xaero's Minimap",
+    "category": "minimap",
+    "match": { "ids": ["xaerominimap", "xaerominimapfair"], "packages": ["xaero.hud", "xaero.common"], "mixins": ["xaerominimap.mixins.json"] }
+  },
+  {
+    "name": "JourneyMap",
+    "category": "minimap",
+    "match": { "ids": ["journeymap"], "packages": ["journeymap.client"] }
+  },
+  {
+    "name": "VoxelMap",
+    "category": "minimap",
+    "match": { "ids": ["voxelmap"], "packages": ["com.mamiyaotaru.voxelmap"] }
+  },
+  {
+    "name": "Autoclicker",
+    "category": "autoclicker",
+    "match": { "ids": ["autoclicker", "auto-clicker", "auto_clicker", "autoclicker-fabric", "fabric-autoclicker", "clickcrystals", "click-crystals", "crystalclicker", "crystal-clicker", "fastclicker", "fast-clicker"], "packages": ["io.github.itzispyder.clickcrystals"] }
+  },
+  {
+    "name": "Litematica Printer",
+    "category": "schematic_printer",
+    "match": { "ids": ["litematica-printer", "litematica_printer", "litematica-printer-addon", "printer", "easyplace", "easy-place"], "packages": ["me.aleksilassila.litematica.printer"] }
+  },
+  {
+    "name": "Schematica",
+    "category": "schematic_printer",
+    "match": { "ids": ["schematica", "schematica-printer", "schematic-printer"], "packages": ["com.github.lunatrius.schematica"] }
+  },
+  {
+    "name": "Tweakeroo",
+    "category": "tweakeroo_utility",
+    "match": { "ids": ["tweakeroo"], "packages": ["fi.dy.masa.tweakeroo"] }
+  },
+  {
+    "name": "MiniHUD",
+    "category": "tweakeroo_utility",
+    "match": { "ids": ["minihud"], "packages": ["fi.dy.masa.minihud"] }
+  },
+  {
+    "name": "Item Scroller",
+    "category": "tweakeroo_utility",
+    "match": { "ids": ["itemscroller"], "packages": ["fi.dy.masa.itemscroller"] }
+  },
+  {
+    "name": "Neat (entity health bars)",
+    "category": "damage_indicators",
+    "match": { "ids": ["neat"], "packages": ["vazkii.neat"] }
+  },
+  {
+    "name": "Damage Indicators / Health bars",
+    "category": "damage_indicators",
+    "match": { "ids": ["damageindicators", "damage-indicators", "healthbar", "health-bar", "healthindicators", "health-indicators", "hp-bars", "torohealth", "toro-health"] }
+  },
+  {
+    "name": "Zoomify",
+    "category": "zoom",
+    "match": { "ids": ["zoomify"], "packages": ["dev.isxander.zoomify"] }
+  },
+  {
+    "name": "OK Zoomer",
+    "category": "zoom",
+    "match": { "ids": ["okzoomer", "ok-zoomer"], "packages": ["io.github.joaoh1.okzoomer", "net.ornithemc.okzoomer"] }
+  },
+  {
+    "name": "Logical Zoom / WI Zoom",
+    "category": "zoom",
+    "match": { "ids": ["logical_zoom", "logical-zoom", "wi_zoom", "wizoom"] }
+  }
+]

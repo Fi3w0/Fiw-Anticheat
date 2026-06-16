@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "fiw-mods-api",
+  "version": "${version}",
+  "name": "Fiw AntiCheat",
+  "description": "Professional mod verification and admin anti-cheat enforcement: blacklist unfair mods, enforce modpacks, and inspect player mod profiles.",
+  "authors": ["Fiw"],
+  "license": "All Rights Reserved",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.fiw.modsapi.FiwModsApi"
+    ],
+    "client": [
+      "dev.fiw.modsapi.client.FiwModsApiClient"
+    ]
+  },
+  "mixins": [
+    "fiw-mods-api.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  }
+}

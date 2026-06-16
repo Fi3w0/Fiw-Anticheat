@@ -1,0 +1,72 @@
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+}
+
+evaluationDependsOn(':core')
+
+base {
+    archivesName = "${project.archives_base_name}-forge-1.20.1"
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.minecraftforge.net/' }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+minecraft {
+    mappings channel: 'official', version: project.minecraft_version
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            mods {
+                "fiw_mods_api" {
+                    source sourceSets.main
+                    source project(':core').sourceSets.main
+                }
+            }
+        }
+        server {
+            workingDirectory project.file('run-server')
+            mods {
+                "fiw_mods_api" {
+                    source sourceSets.main
+                    source project(':core').sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
+    implementation project(':core')
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('META-INF/mods.toml') {
+        expand 'version': project.version
+    }
+}
+
+jar {
+    from project(':core').sourceSets.main.output
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
+
+// ForgeGradle remaps the dev jar to SRG for production.
+tasks.named('jar') { finalizedBy 'reobfJar' }

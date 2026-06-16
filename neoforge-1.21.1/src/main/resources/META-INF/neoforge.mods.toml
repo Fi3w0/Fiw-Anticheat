@@ -1,0 +1,32 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "All Rights Reserved"
+issueTrackerURL = ""
+
+[[mods]]
+modId = "fiw_mods_api"
+version = "${version}"
+displayName = "Fiw AntiCheat"
+logoFile = "icon.png"
+authors = "Fiw"
+description = '''
+Professional mod verification and admin anti-cheat enforcement: blacklist unfair
+mods, enforce official modpacks, and inspect player mod profiles. (NeoForge 1.21.1)
+'''
+
+[[mixins]]
+config = "fiw_mods_api.mixins.json"
+
+[[dependencies.fiw_mods_api]]
+    modId = "neoforge"
+    type = "required"
+    versionRange = "[21.1,)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.fiw_mods_api]]
+    modId = "minecraft"
+    type = "required"
+    versionRange = "[1.21,1.22)"
+    ordering = "NONE"
+    side = "BOTH"
