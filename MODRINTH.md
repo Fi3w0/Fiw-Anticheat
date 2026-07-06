@@ -4,7 +4,7 @@
 
 Fiw AntiCheat helps server owners deal with unwanted client mods without guessing what players are running. On join, the server challenges the client companion mod, records the reported mod list, checks it against configurable rules, and gives admins readable tools for enforcement, rollout, and investigation.
 
-This is built for real server administration: blacklist known unfair mods, enforce an official modpack with a whitelist, monitor detections before kicking, and keep per-player mod profiles so staff can see what changed over time.
+This is built for real server administration: blacklist known unfair mods, audit suspicious resource packs, enforce an official modpack with a whitelist, monitor detections before kicking, and keep per-player profiles so staff can see what changed over time.
 
 ---
 
@@ -13,8 +13,9 @@ This is built for real server administration: blacklist known unfair mods, enfor
 Most anti-cheat setups focus only on movement or combat behavior. Fiw AntiCheat focuses on **client mod visibility and modpack integrity**:
 
 - Detect common unfair mod categories such as cheat clients, x-ray, fullbright, freecam, autoclickers, and schematic printers
+- Audit active and inactive resource packs, including x-ray/fullbright packs left installed under common names
 - Enforce an official modpack list for private SMPs, events, staff servers, and modded communities
-- Keep readable player mod profiles with noisy loader/API entries separated from real installed mods
+- Keep readable player profiles with noisy loader/API entries separated from real installed mods and resource packs
 - Let admins roll out rules safely with monitor-only mode before kicking players
 - Work across Fabric, Forge, and NeoForge targets with one shared rule engine
 
@@ -43,6 +44,8 @@ NeoForge does not publish a real Minecraft 1.20.1 artifact on the current NeoFor
 - **Whitelist mode** - enforce a captured official modpack list
 - **Built-in signature database** - detects known unfair mods by id and stable markers such as packages or mixin configs
 - **Admin profiles** - view each player's current mods, platform/loader entries, and recent changes
+- **Resource pack auditing** - log active and inactive packs, plus added/enabled/disabled/removed history
+- **Optional resource pack bans** - flag by exact pack id/name or SHA-256 fingerprint, with kicks disabled by default
 - **Readable grouping** - Fabric, Forge, NeoForge, API, and loader noise is separated from player-installed mods
 - **Monitor-only rollout** - log and alert staff without kicking while tuning your rules
 - **Staff alerts** - online operators can see detections as they happen
@@ -62,7 +65,7 @@ All commands require permission level 4.
 | `/fiwmods reload` | Reload config and bundled signatures |
 | `/fiwmods snapshot server` | Capture the server's loaded mods into the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods into the whitelist |
-| `/fiwmods profile <name>` | Show grouped current mods and recent profile history |
+| `/fiwmods profile <name>` | Show grouped current mods, resource packs, and recent profile history |
 
 ---
 
@@ -85,6 +88,10 @@ Main options:
 | `detection.monitor_only` | Log detections without kicking |
 | `detection.allow_overrides` | Allow specific signatures/categories even if preset blocks them |
 | `detection.banned_mods` | Add exact mod ids to block |
+| `resource_packs.log` | Record active/inactive resource packs in profiles |
+| `resource_packs.kick_on_banned` | Kick for configured pack matches; default is log-only |
+| `resource_packs.banned_packs` | Add exact pack ids or display names to flag |
+| `resource_packs.banned_fingerprints` | Add exact SHA-256 pack hashes to flag renamed packs |
 | `exemptions.bypass_players` | Bypass specific names or UUIDs |
 | `whitelist.official_mods` | Official modpack snapshot used in whitelist mode |
 
@@ -101,7 +108,7 @@ Main options:
 | Fabric 1.21.11 | Fabric Loader 0.19.2+, Fabric API 0.141.4+1.21.11, Java 21 |
 | NeoForge 1.21.11 | NeoForge 21.11.x, Java 21 |
 
-Install Fiw AntiCheat on the server and on player clients. The client companion is what reports the mod list to the server.
+Install Fiw AntiCheat on the server and on player clients. The client companion is what reports the mod list and resource pack state to the server.
 
 ---
 
@@ -111,6 +118,7 @@ Install Fiw AntiCheat on the server and on player clients. The client companion 
 - Event servers where everyone must use the same mod list
 - Staff visibility into suspicious or changing client setups
 - Blocking common unfair utility mods without locking down harmless QoL mods
+- Auditing players who briefly enable, disable, or delete suspicious resource packs
 - Gradual anti-cheat rollout with monitor-only logging before enforcement
 
 ---

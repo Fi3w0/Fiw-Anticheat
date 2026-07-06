@@ -2,6 +2,7 @@ package dev.fiw.modsapi.core.verify;
 
 import dev.fiw.modsapi.core.config.ModConfig;
 import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import dev.fiw.modsapi.core.signature.Signature;
 import dev.fiw.modsapi.core.signature.SignatureDatabase;
 
@@ -29,11 +30,21 @@ public final class Evaluator {
                                             ModConfig config,
                                             SignatureDatabase signatures,
                                             boolean exempt) {
+        return evaluate(mods, List.of(), config, signatures, exempt);
+    }
+
+    public static EvaluationResult evaluate(List<ModEntry> mods,
+                                            List<ResourcePackEntry> resourcePacks,
+                                            ModConfig config,
+                                            SignatureDatabase signatures,
+                                            boolean exempt) {
         if (exempt) {
             return new EvaluationResult(false, config.kick_message, "exempt player — skipped", List.of());
         }
 
         List<EvaluationResult.Detected> detected = new ArrayList<>();
+        List<EvaluationResult.Detected> blockedMods = new ArrayList<>();
+        List<EvaluationResult.Detected> blockedResourcePacks = new ArrayList<>();
         List<String> reasons = new ArrayList<>();
 
         // --- Layer 1: known-bad blocklist (runs in both modes) ---
@@ -48,21 +59,38 @@ public final class Evaluator {
             if (match.isPresent()) {
                 Signature sig = match.get();
                 if (blocked.getOrDefault(sig.category, false)) {
-                    detected.add(new EvaluationResult.Detected(sig.name, sig.category, mod.id()));
+                    blockedMods.add(new EvaluationResult.Detected(sig.name, sig.category, mod.id()));
                     continue;
                 }
             }
             // explicit admin-banned id (blacklist extra)
             if (bannedIds.contains(mod.id().toLowerCase())) {
-                detected.add(new EvaluationResult.Detected(mod.id(), "banned_mods", mod.id()));
+                blockedMods.add(new EvaluationResult.Detected(mod.id(), "banned_mods", mod.id()));
             }
         }
-        if (!detected.isEmpty()) {
+        detected.addAll(blockedMods);
+        if (config.resource_packs != null && config.resource_packs.log) {
+            blockedResourcePacks.addAll(checkResourcePacks(resourcePacks, config));
+            detected.addAll(blockedResourcePacks);
+        }
+        if (!blockedMods.isEmpty()) {
             StringBuilder sb = new StringBuilder("blocked mods: ");
-            for (int i = 0; i < detected.size(); i++) {
-                EvaluationResult.Detected d = detected.get(i);
+            for (int i = 0; i < blockedMods.size(); i++) {
+                EvaluationResult.Detected d = blockedMods.get(i);
                 if (i > 0) sb.append(", ");
                 sb.append(d.modName()).append(" [").append(d.category()).append("]");
+            }
+            reasons.add(sb.toString());
+        }
+        if (!blockedResourcePacks.isEmpty()) {
+            StringBuilder sb = new StringBuilder("banned resource packs: ");
+            for (int i = 0; i < blockedResourcePacks.size(); i++) {
+                EvaluationResult.Detected d = blockedResourcePacks.get(i);
+                if (i > 0) sb.append(", ");
+                sb.append(d.modName()).append(" [").append(d.category()).append("]");
+            }
+            if (!config.resource_packs.kick_on_banned) {
+                sb.append(" (log only)");
             }
             reasons.add(sb.toString());
         }
@@ -78,7 +106,11 @@ public final class Evaluator {
             }
         }
 
-        boolean wouldKick = !detected.isEmpty() || hasWhitelistViolation(reasons);
+        boolean wouldKick = !blockedMods.isEmpty()
+                || hasWhitelistViolation(reasons)
+                || (!blockedResourcePacks.isEmpty()
+                        && config.resource_packs != null
+                        && config.resource_packs.kick_on_banned);
         // a whitelist setup-mode note is informational, not a violation
         boolean kick = wouldKick && !config.detection.monitor_only;
 
@@ -93,6 +125,37 @@ public final class Evaluator {
         }
 
         return new EvaluationResult(kick, config.kick_message, summary, detected);
+    }
+
+    public static EvaluationResult evaluateResourcePacks(List<ResourcePackEntry> resourcePacks,
+                                                         ModConfig config,
+                                                         boolean exempt) {
+        if (exempt) {
+            return new EvaluationResult(false, config.kick_message, "exempt player — skipped", List.of());
+        }
+        List<EvaluationResult.Detected> detected =
+                config.resource_packs == null || !config.resource_packs.log
+                        ? List.of()
+                        : checkResourcePacks(resourcePacks, config);
+        if (detected.isEmpty()) {
+            int packCount = resourcePacks == null ? 0 : resourcePacks.size();
+            return new EvaluationResult(false, config.kick_message,
+                    "OK (" + packCount + " resource packs)", List.of());
+        }
+        StringBuilder sb = new StringBuilder("banned resource packs: ");
+        for (int i = 0; i < detected.size(); i++) {
+            EvaluationResult.Detected d = detected.get(i);
+            if (i > 0) sb.append(", ");
+            sb.append(d.modName()).append(" [").append(d.category()).append("]");
+        }
+        boolean wouldKick = config.resource_packs != null && config.resource_packs.kick_on_banned;
+        if (!wouldKick) sb.append(" (log only)");
+        String summary = sb.toString();
+        if (wouldKick && config.detection.monitor_only) {
+            summary = "[MONITOR — not kicked] " + summary;
+        }
+        return new EvaluationResult(wouldKick && !config.detection.monitor_only,
+                config.kick_message, summary, detected);
     }
 
     private static List<String> checkWhitelist(List<ModEntry> mods,
@@ -138,6 +201,29 @@ public final class Evaluator {
             }
         }
         return false;
+    }
+
+    private static List<EvaluationResult.Detected> checkResourcePacks(List<ResourcePackEntry> resourcePacks,
+                                                                      ModConfig config) {
+        List<EvaluationResult.Detected> detected = new ArrayList<>();
+        if (resourcePacks == null || config.resource_packs == null) return detected;
+
+        Set<String> banned = lowerSet(config.resource_packs.banned_packs);
+        Set<String> bannedFingerprints = lowerSet(config.resource_packs.banned_fingerprints);
+        if (banned.isEmpty() && bannedFingerprints.isEmpty()) return detected;
+
+        for (ResourcePackEntry pack : resourcePacks) {
+            String id = pack.id().toLowerCase();
+            String name = pack.displayName().toLowerCase();
+            String fingerprint = pack.fingerprint().toLowerCase();
+            if (banned.contains(id) || banned.contains(name)
+                    || (!fingerprint.isEmpty() && bannedFingerprints.contains(fingerprint))) {
+                detected.add(new EvaluationResult.Detected(pack.displayName(),
+                        pack.active() ? "active_resource_pack" : "inactive_resource_pack",
+                        pack.id()));
+            }
+        }
+        return detected;
     }
 
     private static ModConfig.OfficialMod findOfficial(List<ModConfig.OfficialMod> official, String id) {

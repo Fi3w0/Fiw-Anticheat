@@ -106,6 +106,8 @@ public final class FiwModsCommand {
             case HEADER -> Formatting.AQUA;
             case MODS -> Formatting.GREEN;
             case PLATFORM -> Formatting.DARK_GRAY;
+            case RESOURCE_PACKS_ACTIVE -> Formatting.GOLD;
+            case RESOURCE_PACKS_INACTIVE -> Formatting.GRAY;
             case CHANGES -> Formatting.GOLD;
             case EVENT -> Formatting.YELLOW;
             case EMPTY -> Formatting.GRAY;

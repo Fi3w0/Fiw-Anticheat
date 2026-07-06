@@ -31,6 +31,7 @@ public final class ModConfig {
     public String timeout_message = "Mod verification timed out. Please rejoin.";
 
     public Detection detection = new Detection();
+    public ResourcePacks resource_packs = new ResourcePacks();
     public Exemptions exemptions = new Exemptions();
     public Profiling profiling = new Profiling();
     public Whitelist whitelist = new Whitelist();
@@ -61,6 +62,13 @@ public final class ModConfig {
     public static final class Exemptions {
         public boolean floodgate_auto = true;
         public List<String> bypass_players = new ArrayList<>(); // names or UUIDs
+    }
+
+    public static final class ResourcePacks {
+        public boolean log = true;
+        public boolean kick_on_banned = false;
+        public List<String> banned_packs = new ArrayList<>(); // exact id or display name, active or inactive
+        public List<String> banned_fingerprints = new ArrayList<>(); // SHA-256 hex
     }
 
     public static final class Profiling {
@@ -130,6 +138,9 @@ public final class ModConfig {
         if (detection.allow_overrides == null) detection.allow_overrides = new ArrayList<>();
         if (detection.banned_mods == null) detection.banned_mods = new ArrayList<>();
         if (detection.preset == null) detection.preset = "balanced";
+        if (resource_packs == null) resource_packs = new ResourcePacks();
+        if (resource_packs.banned_packs == null) resource_packs.banned_packs = new ArrayList<>();
+        if (resource_packs.banned_fingerprints == null) resource_packs.banned_fingerprints = new ArrayList<>();
         if (exemptions == null) exemptions = new Exemptions();
         if (exemptions.bypass_players == null) exemptions.bypass_players = new ArrayList<>();
         if (profiling == null) profiling = new Profiling();

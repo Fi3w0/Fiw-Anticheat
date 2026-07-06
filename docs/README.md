@@ -2,8 +2,9 @@
 
 Fiw AntiCheat es un mod de verificacion de mods para servidores de Minecraft.
 El servidor envia un reto al cliente cuando entra, el cliente responde con su
-lista de mods, versiones, huellas de jar y marcadores estables, y el servidor
-decide si el jugador puede continuar o debe ser expulsado.
+lista de mods, versiones, huellas de jar, marcadores estables y resource packs
+activos/inactivos, y el servidor decide si el jugador puede continuar o debe ser
+expulsado.
 
 Este mod sirve para administrar servidores y modpacks, no para prometer una
 proteccion imposible. Un cliente modificado puede mentir, pero Fiw AntiCheat
@@ -46,14 +47,18 @@ config/fiw-mods-api/config.json
 El nombre interno `fiw-mods-api` se mantiene por compatibilidad aunque el nombre
 publico del mod sea Fiw AntiCheat.
 
+Al actualizar, una config existente no se resetea. Los campos nuevos usan
+defaults en memoria y aparecen en configs nuevas o cuando un comando existente
+guarda la config.
+
 ## Funcionamiento
 
 Al entrar un jugador:
 
 1. El servidor congela temporalmente al jugador y envia un nonce de verificacion.
 2. El cliente con Fiw AntiCheat responde con su lista de mods y el nonce.
-3. El servidor comprueba firmas, ids baneados, modo blacklist/whitelist y
-   excepciones.
+3. El servidor comprueba firmas, ids baneados, resource packs configurados, modo
+   blacklist/whitelist y excepciones.
 4. Si pasa la verificacion, el jugador queda liberado.
 5. Si falla, se expulsa al jugador con `kick_message`.
 6. Si no responde a tiempo, se expulsa con `timeout_message`.
@@ -91,6 +96,12 @@ Ejemplo de configuracion generada:
     "allow_overrides": [],
     "banned_mods": []
   },
+  "resource_packs": {
+    "log": true,
+    "kick_on_banned": false,
+    "banned_packs": [],
+    "banned_fingerprints": []
+  },
   "exemptions": {
     "floodgate_auto": true,
     "bypass_players": []
@@ -120,6 +131,10 @@ Opciones principales:
 | `detection.block` | Mapa de categorias usado solo con `preset: "custom"`. |
 | `detection.allow_overrides` | Permite ids o categorias concretas aunque un preset las bloquee. |
 | `detection.banned_mods` | Lista de ids exactos que siempre se bloquean. |
+| `resource_packs.log` | Guarda resource packs activos/inactivos en perfiles. |
+| `resource_packs.kick_on_banned` | Si es `true`, packs baneados expulsan. Por defecto solo registra. |
+| `resource_packs.banned_packs` | Ids o nombres exactos de packs a marcar, activos o inactivos. |
+| `resource_packs.banned_fingerprints` | Huellas SHA-256 exactas de packs a marcar aunque sean renombrados. |
 | `exemptions.floodgate_auto` | Exime automaticamente jugadores Bedrock detectados por Floodgate. |
 | `exemptions.bypass_players` | Nombres o UUIDs que saltan la verificacion. |
 | `profiling.enabled` | Guarda perfiles de mods por jugador. |
@@ -190,6 +205,19 @@ Para bloquear un mod concreto por id:
 "banned_mods": ["examplemod"]
 ```
 
+Para auditar resource packs sospechosos sin expulsar:
+
+```json
+"resource_packs": {
+  "log": true,
+  "kick_on_banned": false,
+  "banned_packs": ["file/xray.zip", "xray.zip"],
+  "banned_fingerprints": []
+}
+```
+
+Para expulsar por packs configurados, cambia `kick_on_banned` a `true`.
+
 Para permitir un id de mod concreto aunque coincida con una firma:
 
 ```json
@@ -239,7 +267,7 @@ Todos los comandos requieren nivel de permiso 4.
 | `/fiwmods reload` | Recarga `config.json` y la base de firmas incluida. |
 | `/fiwmods snapshot server` | Guarda los mods cargados en el servidor como whitelist oficial. |
 | `/fiwmods snapshot player <nombre>` | Pide al jugador online su lista de mods y la guarda como whitelist oficial. |
-| `/fiwmods profile <nombre>` | Muestra mods actuales, entradas de plataforma y cambios recientes. |
+| `/fiwmods profile <nombre>` | Muestra mods, resource packs y cambios recientes. |
 
 ## Perfiles de jugadores
 
@@ -254,7 +282,10 @@ El comando `/fiwmods profile <nombre>` separa:
 - `Mods`: mods relevantes instalados por el jugador.
 - `Platform`: entradas ruidosas como Minecraft, Fabric API, Forge, NeoForge,
   loaders, mixins y el propio Fiw AntiCheat.
-- `Recent changes`: mods agregados, eliminados o con version cambiada.
+- `Resource packs active`: packs activos en el cliente.
+- `Resource packs inactive`: packs instalados pero no activos.
+- `Recent changes`: mods agregados, eliminados o con version cambiada, y packs
+  agregados, activados, desactivados, eliminados o actualizados.
 
 Esto ayuda a investigar cambios sospechosos sin leer listas enormes de mods de
 plataforma.
@@ -345,10 +376,15 @@ Los jars de produccion quedan en:
 2. Cliente sin el companion mod: debe fallar por timeout.
 3. Mod incluido en `detection.banned_mods`: debe expulsar.
 4. `monitor_only: true`: debe registrar y avisar, pero no expulsar.
-5. `/fiwmods snapshot player <nombre>`: debe actualizar `whitelist.official_mods`.
-6. `mode: "whitelist"` con snapshot valido: debe permitir solo el modpack
+5. Resource pack activo/inactivo: debe aparecer en `/fiwmods profile <nombre>`.
+6. Agregar, activar, desactivar o eliminar un resource pack online: debe crear
+   un evento de historial tras el siguiente escaneo del cliente.
+7. Pack en `resource_packs.banned_packs`: debe registrar por defecto y expulsar
+   solo si `kick_on_banned` es `true`.
+8. `/fiwmods snapshot player <nombre>`: debe actualizar `whitelist.official_mods`.
+9. `mode: "whitelist"` con snapshot valido: debe permitir solo el modpack
    capturado.
-7. `/fiwmods profile <nombre>`: debe mostrar mods, plataforma y cambios.
+10. `/fiwmods profile <nombre>`: debe mostrar mods, plataforma, packs y cambios.
 
 ## Solucion de problemas
 
@@ -366,6 +402,12 @@ Un mod permitido aparece como bloqueado:
 - Anade el id a `detection.allow_overrides`.
 - Ejecuta `/fiwmods reload`.
 
+Un resource pack sospechoso solo aparece en logs:
+
+- Esto es el default. Pon `resource_packs.kick_on_banned` en `true` para expulsar.
+- Usa `resource_packs.banned_fingerprints` si el pack puede ser renombrado.
+- Ejecuta `/fiwmods reload`.
+
 Whitelist deja entrar a todos:
 
 - Revisa si `whitelist.official_mods` esta vacio.
@@ -381,6 +423,9 @@ Los admins no ven alertas:
 ## Limitaciones
 
 - No detecta clientes maliciosos que modifiquen el companion para mentir.
+- Resource packs instalados y borrados antes de que el companion los reporte no
+  se pueden probar; los perfiles solo muestran lo que el cliente reporto al
+  menos una vez.
 - No sustituye sistemas anticheat basados en movimiento, combate o paquetes.
 - Las firmas incluidas ayudan contra mods comunes, pero pueden necesitar ajustes
   para reglas especificas de cada servidor.

@@ -14,11 +14,19 @@ public final class ServerNetworking {
         // Payload types must be registered on both sides (main entrypoint runs on both).
         PayloadTypeRegistry.playS2C().register(Payloads.ChallengePayload.ID, Payloads.ChallengePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(Payloads.ResponsePayload.ID, Payloads.ResponsePayload.CODEC);
+        PayloadTypeRegistry.playC2S().register(Payloads.ResourcePackUpdatePayload.ID, Payloads.ResourcePackUpdatePayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(Payloads.ResponsePayload.ID, (payload, context) -> {
             ServerPlayerEntity player = context.player();
             context.server().execute(() ->
-                    FiwModsApi.handleResponse(context.server(), player, payload.mods(), payload.nonce()));
+                    FiwModsApi.handleResponse(context.server(), player,
+                            payload.mods(), payload.resourcePacks(), payload.nonce()));
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(Payloads.ResourcePackUpdatePayload.ID, (payload, context) -> {
+            ServerPlayerEntity player = context.player();
+            context.server().execute(() ->
+                    FiwModsApi.handleResourcePackUpdate(context.server(), player, payload.resourcePacks()));
         });
     }
 

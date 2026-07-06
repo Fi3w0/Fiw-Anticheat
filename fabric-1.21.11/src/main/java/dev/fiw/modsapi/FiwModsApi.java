@@ -6,6 +6,7 @@ import dev.fiw.modsapi.core.FiwModsEngine;
 import dev.fiw.modsapi.core.challenge.ChallengeManager;
 import dev.fiw.modsapi.core.freeze.FreezeState;
 import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import dev.fiw.modsapi.core.verify.EvaluationResult;
 import dev.fiw.modsapi.net.ServerNetworking;
 import net.fabricmc.api.ModInitializer;
@@ -92,7 +93,7 @@ public final class FiwModsApi implements ModInitializer {
 
     /** Handle a client's verification response (already on the server thread). */
     public static void handleResponse(MinecraftServer server, ServerPlayerEntity player,
-                                      List<ModEntry> mods, byte[] nonceEcho) {
+                                      List<ModEntry> mods, List<ResourcePackEntry> resourcePacks, byte[] nonceEcho) {
         UUID uuid = player.getUuid();
         String name = player.getName().getString();
 
@@ -107,7 +108,7 @@ public final class FiwModsApi implements ModInitializer {
             return;
         }
 
-        engine.recordProfile(uuid, name, mods);
+        engine.recordProfile(uuid, name, mods, resourcePacks);
 
         // snapshot capture mode
         if (pending.capture()) {
@@ -119,7 +120,7 @@ public final class FiwModsApi implements ModInitializer {
         }
 
         boolean exempt = isExempt(player);
-        EvaluationResult result = engine.evaluate(mods, exempt);
+        EvaluationResult result = engine.evaluate(mods, resourcePacks, exempt);
 
         if (result.hasDetections()) {
             for (EvaluationResult.Detected d : result.detected()) {
@@ -142,6 +143,35 @@ public final class FiwModsApi implements ModInitializer {
         } else {
             engine.freezes().unfreeze(uuid);
             LOGGER.info("[FiwAntiCheat] {} passed verification: {}", name, result.logSummary());
+        }
+    }
+
+    /** Handle a resource-pack-only update sent after the join challenge. */
+    public static void handleResourcePackUpdate(MinecraftServer server,
+                                                ServerPlayerEntity player,
+                                                List<ResourcePackEntry> resourcePacks) {
+        if (isExempt(player)) return;
+        String name = player.getName().getString();
+        engine.recordResourcePacks(player.getUuid(), name, resourcePacks);
+
+        EvaluationResult result = engine.evaluateResourcePacks(resourcePacks, false);
+        if (result.hasDetections()) {
+            for (EvaluationResult.Detected d : result.detected()) {
+                LOGGER.warn("[FiwAntiCheat] {} flagged: {} [{}] (id={})",
+                        name, d.modName(), d.category(), d.modId());
+            }
+            if (engine.config().detection.alert_staff) {
+                StringBuilder sb = new StringBuilder("[FiwAntiCheat] ").append(name).append(" using: ");
+                for (int i = 0; i < result.detected().size(); i++) {
+                    if (i > 0) sb.append(", ");
+                    sb.append(result.detected().get(i).modName());
+                }
+                alertStaff(server, sb.toString());
+            }
+        }
+        if (result.kick()) {
+            LOGGER.warn("[FiwAntiCheat] Kicking {}: {}", name, result.logSummary());
+            player.networkHandler.disconnect(Text.literal(result.kickMessage()));
         }
     }
 

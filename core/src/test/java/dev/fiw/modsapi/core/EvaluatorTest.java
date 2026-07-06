@@ -3,6 +3,7 @@ package dev.fiw.modsapi.core;
 import dev.fiw.modsapi.core.config.ModConfig;
 import dev.fiw.modsapi.core.model.ModEntry;
 import dev.fiw.modsapi.core.model.ModMarkers;
+import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import dev.fiw.modsapi.core.signature.Signature;
 import dev.fiw.modsapi.core.signature.SignatureDatabase;
 import dev.fiw.modsapi.core.verify.EvaluationResult;
@@ -131,5 +132,33 @@ class EvaluatorTest {
         ModConfig cfg = new ModConfig();
         cfg.mode = "whitelist"; // no official mods captured
         assertFalse(Evaluator.evaluate(List.of(mod("anything")), cfg, db(), false).kick());
+    }
+
+    @Test
+    void resourcePackBanIsLogOnlyByDefault() {
+        ModConfig cfg = new ModConfig();
+        cfg.resource_packs.banned_packs = List.of("xray-pack.zip");
+
+        var result = Evaluator.evaluate(List.of(mod("sodium")),
+                List.of(new ResourcePackEntry("file/xray-pack.zip", "xray-pack.zip", "", true)),
+                cfg, db(), false);
+
+        assertFalse(result.kick());
+        assertTrue(result.hasDetections());
+        assertTrue(result.logSummary().contains("log only"));
+    }
+
+    @Test
+    void resourcePackBanCanKickWhenEnabled() {
+        ModConfig cfg = new ModConfig();
+        cfg.resource_packs.kick_on_banned = true;
+        cfg.resource_packs.banned_fingerprints = List.of("deadbeef");
+
+        var result = Evaluator.evaluate(List.of(mod("sodium")),
+                List.of(new ResourcePackEntry("file/renamed.zip", "renamed.zip", "deadbeef", false)),
+                cfg, db(), false);
+
+        assertTrue(result.kick());
+        assertEquals("inactive_resource_pack", result.detected().get(0).category());
     }
 }

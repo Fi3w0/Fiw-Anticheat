@@ -47,4 +47,24 @@ class ProfileViewTest {
         assertTrue(lines.stream().anyMatch(s -> s.startsWith("Mods (1): freecam@1.0")));
         assertTrue(lines.stream().anyMatch(s -> s.startsWith("Platform (2): neoforge@21.1.91")));
     }
+
+    @Test
+    void commandLinesShowResourcePacks() {
+        PlayerProfile profile = new PlayerProfile();
+        profile.firstSeen = "now";
+        profile.joins = 1;
+        profile.activeResourcePacks = List.of(
+                new PlayerProfile.ResourcePack("vanilla", "Default", ""));
+        profile.inactiveResourcePacks = List.of(
+                new PlayerProfile.ResourcePack("file/xray.zip", "xray.zip", "abc"));
+        profile.history = List.of(PlayerProfile.Event.resourcePack("now", "added",
+                new PlayerProfile.ResourcePack("file/xray.zip", "xray.zip", "abc"), false));
+
+        List<String> lines = ProfileView.commandLines(profile, "Alex");
+
+        assertTrue(lines.get(0).contains("1 active packs, 1 inactive packs"));
+        assertTrue(lines.stream().anyMatch(s -> s.startsWith("Resource packs active (1): Default [vanilla]")));
+        assertTrue(lines.stream().anyMatch(s -> s.startsWith("Resource packs inactive (1): xray.zip")));
+        assertTrue(lines.stream().anyMatch(s -> s.contains("added resource_pack xray.zip [inactive]")));
+    }
 }

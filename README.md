@@ -37,6 +37,7 @@ MinecraftForge 47.x.
 
 On player join, the server sends a nonce challenge. A client with the companion
 mod reports its loaded mods, versions, jar fingerprints, and stable code markers.
+It also reports active and inactive resource packs for staff auditing.
 The server evaluates that list, then either unfreezes the player or disconnects
 them.
 
@@ -48,6 +49,9 @@ Main features:
   markers such as packages and mixin configs.
 - Per-player profile history showing current mods and changes over time. Profile
   output separates real/player-installed mods from noisy loader/API entries.
+- Resource pack auditing for active and inactive packs, including added,
+  enabled, disabled, removed, and fingerprint-updated history.
+- Optional resource pack bans by exact pack id/name or SHA-256 fingerprint.
 - Floodgate/Geyser Bedrock player exemption by reflection when Floodgate exists.
 
 This is a modpack enforcer, not a cheat-proof anti-cheat. A modified companion
@@ -65,6 +69,8 @@ id renames much less useful.
 ## Configuration
 
 The server writes `config/fiw-mods-api/config.json` on first run.
+Existing config files are not reset on upgrade; missing fields use defaults in
+memory and appear in newly generated configs or future saves.
 
 ```jsonc
 {
@@ -79,6 +85,12 @@ The server writes `config/fiw-mods-api/config.json` on first run.
     "block": { "...": "used only when preset == custom" },
     "allow_overrides": [],
     "banned_mods": []
+  },
+  "resource_packs": {
+    "log": true,
+    "kick_on_banned": false,
+    "banned_packs": [],
+    "banned_fingerprints": []
   },
   "exemptions": { "floodgate_auto": true, "bypass_players": [] },
   "profiling": { "enabled": true, "max_history": 200 },
@@ -98,6 +110,11 @@ Presets:
 `allow_overrides`, `banned_mods`, and `bypass_players` apply on top of presets.
 Set `monitor_only` to log detections without kicking during rollout.
 
+Resource pack auditing is log-only by default. `banned_packs` matches exact pack
+ids or display names, `banned_fingerprints` matches exact SHA-256 content hashes,
+and `kick_on_banned` must be set to `true` before pack matches disconnect
+players.
+
 ## Commands
 
 `/fiwmods` requires permission level 4.
@@ -107,7 +124,7 @@ Set `monitor_only` to log detections without kicking during rollout.
 | `/fiwmods reload` | Reload config and bundled signatures |
 | `/fiwmods snapshot server` | Capture the server's loaded mods as whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as whitelist |
-| `/fiwmods profile <name>` | Show grouped current mods and recent profile history |
+| `/fiwmods profile <name>` | Show grouped mods, resource packs, and recent profile history |
 
 ## Building And Testing
 

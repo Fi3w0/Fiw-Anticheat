@@ -11,5 +11,8 @@ public final class Channels {
     /** Client → Server: reported mod list + nonce echo. */
     public static final Identifier RESPONSE = new Identifier("fiw-mods-api", "response");
 
+    /** Client → Server: resource-pack-only profile update after join. */
+    public static final Identifier RESOURCE_PACK_UPDATE = new Identifier("fiw-mods-api", "resource_pack_update");
+
     private Channels() {}
 }

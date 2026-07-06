@@ -3,18 +3,20 @@
 Una herramienta del lado servidor de **verificacion y control de mods** para
 Minecraft. Cuando un jugador entra, el servidor le envia un reto; un cliente con
 el mod companero responde con sus mods cargados (id, version, huella SHA-256 del
-jar y marcadores de codigo estables); el servidor evalua ese reporte y deja
-entrar al jugador o lo expulsa.
+jar y marcadores de codigo estables); tambien reporta resource packs activos e
+inactivos para auditoria del staff. El servidor evalua ese reporte y deja entrar
+al jugador o lo expulsa.
 
 > **Modelo de amenaza honesto - leelo primero.**
 > Esto es un *enforcer de modpacks/mods*, no un anti-cheat criptograficamente
 > irrompible. El reporte lo manda el cliente y el mod companero es de confianza.
 > Un atacante decidido que decompile y edite el mod companero puede mentir sobre
-> su lista de mods, y **ningun sistema del lado cliente puede impedir eso del
-> todo**, porque el cliente posee todos los secretos. Lo que este mod si frena de
-> forma fiable es el nivel casual: renombrar el jar, cambiar el id de un mod,
-> subir de version, suplantar un mod permitido, repetir paquetes (replay) y "no
-> instalarlo". Para algo mas robusto, combinalo con un launcher controlado (packs
+> su lista de mods o resource packs, y **ningun sistema del lado cliente puede
+> impedir eso del todo**, porque el cliente posee todos los secretos. Lo que este
+> mod si frena de forma fiable es el nivel casual: renombrar el jar, cambiar el
+> id de un mod, subir de version, suplantar un mod permitido, repetir paquetes
+> (replay), "no instalarlo", y dejar instalado un pack publico de x-ray/fullbright
+> con nombre obvio. Para algo mas robusto, combinalo con un launcher controlado (packs
 > firmados) y un anti-cheat **del lado servidor** para cheats de inyeccion/DLL.
 
 ---
@@ -67,6 +69,11 @@ Todo el trabajo ocurre **una vez por entrada**, nunca por tick.
    - `markers` - senales de identidad estables: paquetes raiz + nombres de
      configs de mixin declarados (sobreviven a renombrar el jar *y* a renombrar el
      id interno del mod)
+   Tambien reporta resource packs:
+   - `id` - id del pack, normalmente `file/<archivo>` para packs locales
+   - `name` - nombre/archivo legible para el staff
+   - `fingerprint` - SHA-256 del zip o del contenido de la carpeta cuando existe
+   - `active` - si el pack esta activo en la pila actual del cliente
    - mas el **nonce devuelto (echo)**
 3. **Evaluacion en el servidor** (ver seccion 6). El resultado es PASS o KICK.
    - PASS -> descongela.
@@ -75,6 +82,11 @@ Todo el trabajo ocurre **una vez por entrada**, nunca por tick.
    - Sin respuesta dentro de `timeout_seconds` -> expulsado con el mensaje de
      timeout.
 4. **Exenciones** (Bedrock por Floodgate + lista de bypass) saltan todo el proceso.
+
+Despues del reporte de entrada, el cliente companero vuelve a escanear resource
+packs periodicamente mientras esta online. Si cambia el set activo/inactivo,
+envia una actualizacion solo de packs para que el perfil registre eventos
+`added`, `enabled`, `disabled`, `removed` y `updated` durante la misma sesion.
 
 El nonce por entrada es **anti-replay / ligado a la sesion** (un tercero fuera de
 la sesion no puede falsificar una respuesta valida y no se pueden reusar respuestas
@@ -96,6 +108,10 @@ irreducible de confianza en el cliente.
    es Fiw AntiCheat.)
 4. Edita la config (seccion 5) y recarga en el juego con `/fiwmods reload`
    (operador nivel 4).
+
+Las configs existentes no se resetean al actualizar. Los campos que falten usan
+defaults en memoria; los campos nuevos aparecen en configs recien generadas o la
+proxima vez que un comando existente guarde la config.
 
 ---
 
@@ -122,6 +138,12 @@ Config por defecto completa:
     "allow_overrides": [],
     "banned_mods": []
   },
+  "resource_packs": {
+    "log": true,
+    "kick_on_banned": false,
+    "banned_packs": [],
+    "banned_fingerprints": []
+  },
   "exemptions": { "floodgate_auto": true, "bypass_players": [] },
   "profiling": { "enabled": true, "max_history": 200 },
   "whitelist": { "require_all": true, "official_mods": [] }
@@ -147,6 +169,20 @@ Config por defecto completa:
 | `block` | map | (balanced) | Mapa categoria -> on/off. **Solo se usa cuando `preset` es `custom`.** |
 | `allow_overrides` | string[] | `[]` | Ids de mods a desbloquear de una categoria bloqueada (ej. permitir un minimap). |
 | `banned_mods` | string[] | `[]` | Ids extra a bloquear siempre (ademas de la base de firmas). |
+
+### `resource_packs`
+
+| Clave | Tipo | Default | Significado |
+|---|---|---|---|
+| `log` | bool | `true` | Guarda resource packs activos/inactivos en perfiles y evalua bans opcionales. |
+| `kick_on_banned` | bool | `false` | Si es `true`, los packs configurados expulsan. Por defecto solo audita/registra. |
+| `banned_packs` | string[] | `[]` | Ids o nombres exactos de resource packs a marcar, activos o inactivos. Ejemplos: `file/xray.zip`, `xray.zip`. |
+| `banned_fingerprints` | string[] | `[]` | Huellas SHA-256 exactas de packs a marcar, util si un pack conocido puede ser renombrado. |
+
+Las comprobaciones de resource packs son simples y transparentes. Nombre/id
+atrapa packs publicos comunes y bypass casual; las huellas atrapan contenido
+exacto conocido. Un cliente companero modificado puede mentir igual que con los
+mods.
 
 ### `exemptions`
 
@@ -185,12 +221,16 @@ Por cada entrada, en orden:
    base de firmas (seccion 8). Si una firma coincide, su categoria esta activada y
    el id no esta en `allow_overrides` -> se registra una deteccion. Los ids en
    `banned_mods` tambien detectan.
-3. **Modo**:
+3. **Auditoria de resource packs.** Si `resource_packs.log` es true, comprueba
+   packs activos e inactivos contra `banned_packs` y `banned_fingerprints`. Las
+   coincidencias solo se registran por defecto y expulsan solo si
+   `resource_packs.kick_on_banned` es true.
+4. **Modo**:
    - `blacklist` -> expulsa si hay alguna deteccion (si no, PASS - servidor abierto).
    - `whitelist` -> ademas exige que cada mod reportado este en `official_mods`
      (mod desconocido -> kick), exige las huellas fijadas (no coincide -> kick), y
      si `require_all`, expulsa cuando falta un mod oficial.
-4. **`monitor_only`** suprime *todos* los kicks: solo registra las detecciones.
+5. **`monitor_only`** suprime *todos* los kicks: solo registra las detecciones.
 
 `official_mods` vacio en modo `whitelist` = **modo setup**: todos pueden entrar
 (con un aviso fuerte en el log) hasta que captures un snapshot.
@@ -271,8 +311,21 @@ infractora). La salida **separa los mods reales instalados por el jugador del
 ruido de plataforma** (minecraft, loader, fabric-api, neoforge, el propio
 anticheat, etc.) para que el staff vea la lista util.
 
-Velo con `/fiwmods profile <nombre>` - muestra los mods actuales agrupados +
-cambios recientes, util para detectar "este jugador acaba de agregar freecam".
+Los perfiles tambien guardan resource packs en dos secciones:
+
+- resource packs activos - habilitados en la pila actual del cliente,
+- resource packs inactivos - instalados/disponibles en la carpeta de resource
+  packs del cliente, pero no activos.
+
+El historial de resource packs registra eventos `added`, `enabled`, `disabled`,
+`removed` y `updated`. "Removed" significa que el companion vio el pack en un
+reporte anterior y ya no lo ve en uno posterior; no puede probar que existio si
+el jugador lo instalo y elimino antes de reportar al servidor.
+
+Velo con `/fiwmods profile <nombre>` - muestra los mods actuales agrupados,
+resource packs activos/inactivos y cambios recientes, util para detectar "este
+jugador acaba de agregar freecam" o "este jugador activo y luego elimino un pack
+de x-ray".
 
 ---
 
@@ -285,16 +338,18 @@ cambios recientes, util para detectar "este jugador acaba de agregar freecam".
 | `/fiwmods reload` | Recarga config + firmas incluidas desde disco |
 | `/fiwmods snapshot server` | Captura los mods del **propio servidor** como whitelist |
 | `/fiwmods snapshot player <nombre>` | Captura los mods reportados por un jugador conectado como whitelist |
-| `/fiwmods profile <nombre>` | Muestra los mods actuales agrupados + historial reciente |
+| `/fiwmods profile <nombre>` | Muestra mods, resource packs e historial reciente |
 
 ---
 
 ## 11. Rendimiento
 
-Toda la verificacion es **por entrada** y fuera del hilo principal para la E/S;
-nada corre por tick salvo un barrido ligero de timeout sobre las entradas
-pendientes. El hash del jar del cliente ocurre una vez en la entrada, en el
-cliente. El impacto en TPS es practicamente nulo, incluso con muchos jugadores.
+La verificacion de mods es **por entrada** y fuera del hilo principal para la
+E/S; nada corre por tick en el servidor salvo un barrido ligero de timeout sobre
+las entradas pendientes. El hash del jar del cliente ocurre una vez en la
+entrada, en el cliente. Los resource packs se escanean al entrar y luego
+periodicamente del lado cliente mientras esta conectado; solo se envian al
+servidor los sets de packs que cambiaron.
 
 ---
 
@@ -333,6 +388,10 @@ neoforge-1.21.11/ Adaptador NeoForge 1.21.11
   `allow_overrides`, o usa un preset menos estricto.
 - **Mods que se auto-actualizan (ej. Essential) rompen el modo whitelist** ->
   fijalos con un launcher controlado, o mantenlos en modo `blacklist`.
+- **Los bans de resource packs registran pero no expulsan** -> pon
+  `resource_packs.kick_on_banned` en `true`; por defecto es solo auditoria.
+- **Un pack de x-ray renombrado no cae por nombre** -> agrega su SHA-256 exacto a
+  `resource_packs.banned_fingerprints` si conoces el archivo.
 - **Jugadores de Bedrock expulsados** -> asegurate de tener Floodgate instalado y
   `floodgate_auto` en `true`, o agregalos a `bypass_players`.
 - **Despliegue en un servidor en vivo** -> pon `monitor_only: true` primero,

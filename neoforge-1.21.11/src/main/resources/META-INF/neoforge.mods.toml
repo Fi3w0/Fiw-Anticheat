@@ -11,7 +11,7 @@ logoFile = "icon.png"
 authors = "Fiw"
 description = '''
 Professional mod verification and admin anti-cheat enforcement: blacklist unfair
-mods, enforce official modpacks, and inspect player mod profiles. (NeoForge 1.21.11)
+mods, enforce official modpacks, and inspect player mod/resource-pack profiles. (NeoForge 1.21.11)
 '''
 
 [[mixins]]

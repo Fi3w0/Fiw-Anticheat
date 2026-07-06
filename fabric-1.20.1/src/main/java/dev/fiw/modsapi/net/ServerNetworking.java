@@ -2,6 +2,7 @@ package dev.fiw.modsapi.net;
 
 import dev.fiw.modsapi.FiwModsApi;
 import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
@@ -19,8 +20,15 @@ public final class ServerNetworking {
                 (server, player, handler, buf, sender) -> {
                     // Decode on the network thread, then hand off to the main thread.
                     List<ModEntry> mods = ModListCodec.readMods(buf);
+                    List<ResourcePackEntry> resourcePacks = ModListCodec.readResourcePacks(buf);
                     byte[] nonceEcho = buf.readByteArray(64);
-                    server.execute(() -> FiwModsApi.handleResponse(server, player, mods, nonceEcho));
+                    server.execute(() -> FiwModsApi.handleResponse(server, player, mods, resourcePacks, nonceEcho));
+                });
+
+        ServerPlayNetworking.registerGlobalReceiver(Channels.RESOURCE_PACK_UPDATE,
+                (server, player, handler, buf, sender) -> {
+                    List<ResourcePackEntry> resourcePacks = ModListCodec.readResourcePacks(buf);
+                    server.execute(() -> FiwModsApi.handleResourcePackUpdate(server, player, resourcePacks));
                 });
     }
 

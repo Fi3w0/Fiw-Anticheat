@@ -2,6 +2,28 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
+## [2.0.2] - Resource pack auditing
+
+### Added
+
+- Added companion-client reporting for active and inactive resource packs.
+- Added resource pack profile history, including added, removed, enabled,
+  disabled, and fingerprint-updated events.
+- Added `/fiwmods profile <name>` output sections for active and inactive
+  resource packs.
+- Added `resource_packs` config for log-only auditing by default, with optional
+  banned pack name/id and SHA-256 fingerprint checks.
+- Added live resource-pack update reporting after join so active/inactive/delete
+  changes during a session are recorded when the companion client observes them.
+
+### Changed
+
+- Join verification responses now include resource pack data alongside the mod
+  list and nonce.
+- Existing config files are not reset on upgrade; missing `resource_packs`
+  values are filled with defaults in memory and appear in newly generated
+  configs or future saves.
+
 ## [2.0.1] - Expanded cheat signature database
 
 ### Changed

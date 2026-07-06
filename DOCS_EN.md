@@ -3,16 +3,18 @@
 A server-side **mod verification and enforcement** tool for Minecraft. On join,
 the server challenges the client; a client running the companion mod reports its
 loaded mods (id, version, SHA-256 jar fingerprint, and stable code markers); the
+client also reports active and inactive resource packs for staff auditing. The
 server evaluates that report and either lets the player in or disconnects them.
 
 > **Honest threat model — read this first.**
 > This is a *modpack/mod enforcer*, not a cryptographically unbreakable
 > anti-cheat. The report is **client-reported** and the companion mod is trusted.
 > A determined attacker who decompiles and edits the companion mod can lie about
-> their mod list — and **no client-side system can fully prevent that**, because
-> the client holds every secret involved. What this mod *does* reliably defeat is
-> the casual tier: jar renames, mod-id swaps, version bumps, impersonating an
-> allowed mod, replaying packets, and "just don't install it." For a hardened
+> their mod or resource-pack list — and **no client-side system can fully prevent
+> that**, because the client holds every secret involved. What this mod *does*
+> reliably defeat is the casual tier: jar renames, mod-id swaps, version bumps,
+> impersonating an allowed mod, replaying packets, "just don't install it", and
+> common public x-ray/fullbright packs left installed under obvious names. For a hardened
 > setup, pair it with a controlled launcher (signed packs) and a **server-side**
 > behavioural anti-cheat for injection/DLL-style cheats.
 
@@ -65,6 +67,11 @@ All work happens **once per join**, never per tick.
    - `fingerprint` — **SHA-256 of the mod's jar file**
    - `markers` — stable identity signals: root packages + declared mixin config
      names (these survive a jar rename *and* an internal mod-id rename)
+   It also reports resource packs:
+   - `id` — pack id, usually `file/<filename>` for local packs
+   - `name` — readable pack name/filename for staff output
+   - `fingerprint` — SHA-256 of the zip or directory content when available
+   - `active` — whether the pack is currently enabled
    - plus the **nonce echoed back**
 3. **Server evaluation** (see §6). The result is PASS or KICK.
    - PASS → unfreeze.
@@ -72,6 +79,11 @@ All work happens **once per join**, never per tick.
      to console and (optionally) sent to online staff.
    - No reply within `timeout_seconds` → kicked with the timeout message.
 4. **Exemptions** (Floodgate Bedrock + bypass list) skip the whole process.
+
+After the join report, the companion client periodically re-scans resource packs
+while online. If the active/inactive pack set changes, it sends a pack-only
+update so the profile can record added, enabled, disabled, removed, and changed
+pack events during the same session.
 
 The per-join nonce is **anti-replay / session-bound** (an off-session third
 party can't forge a valid response and old responses can't be replayed). It is
@@ -91,6 +103,10 @@ always echo its own nonce. That's the irreducible client-trust limit.
    (The internal id `fiw-mods-api` is kept for backwards-compat; the public name
    is Fiw AntiCheat.)
 4. Edit the config (§5), then reload in-game with `/fiwmods reload` (OP level 4).
+
+Existing config files are not reset on upgrade. Missing fields use defaults in
+memory; new fields appear in freshly generated configs or the next time an
+existing command saves the config.
 
 ---
 
@@ -117,6 +133,12 @@ Full default config:
     "allow_overrides": [],
     "banned_mods": []
   },
+  "resource_packs": {
+    "log": true,
+    "kick_on_banned": false,
+    "banned_packs": [],
+    "banned_fingerprints": []
+  },
   "exemptions": { "floodgate_auto": true, "bypass_players": [] },
   "profiling": { "enabled": true, "max_history": 200 },
   "whitelist": { "require_all": true, "official_mods": [] }
@@ -142,6 +164,20 @@ Full default config:
 | `block` | map | (balanced) | Per-category on/off map. **Only used when `preset` is `custom`.** |
 | `allow_overrides` | string[] | `[]` | Mod ids to un-ban from an otherwise-blocked category (e.g. allow one minimap). |
 | `banned_mods` | string[] | `[]` | Extra mod ids to always deny (on top of the signature blocklist). |
+
+### `resource_packs`
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `log` | bool | `true` | Record active/inactive resource packs in player profiles and evaluate optional pack bans. |
+| `kick_on_banned` | bool | `false` | If `true`, configured resource pack matches disconnect players. Default is audit/log only. |
+| `banned_packs` | string[] | `[]` | Exact resource pack ids or display names to flag, active or inactive. Examples: `file/xray.zip`, `xray.zip`. |
+| `banned_fingerprints` | string[] | `[]` | Exact SHA-256 pack fingerprints to flag, useful when a known pack may be renamed. |
+
+Resource pack checks are intentionally simple and transparent. Name/id matches
+catch common public packs and casual bypasses; fingerprints catch exact known
+pack content. A modified companion client can still lie, just like with mod
+reporting.
 
 ### `exemptions`
 
@@ -179,12 +215,15 @@ For each join, in order:
    bundled signature database (§8). If a signature matches, its category is
    enabled, and the id is not in `allow_overrides` → record a detection. Mod ids
    in `banned_mods` also detect.
-3. **Mode**:
+3. **Resource pack audit.** If `resource_packs.log` is true, check active and
+   inactive packs against `banned_packs` and `banned_fingerprints`. Matches are
+   logged by default and only kick when `resource_packs.kick_on_banned` is true.
+4. **Mode**:
    - `blacklist` → kick if any detection (otherwise PASS — open server).
    - `whitelist` → also require every reported mod to be in `official_mods`
      (unknown mod → kick), enforce pinned fingerprints (mismatch → kick), and if
      `require_all`, kick when an official mod is missing.
-4. **`monitor_only`** suppresses *all* kicks — detections are logged only.
+5. **`monitor_only`** suppresses *all* kicks — detections are logged only.
 
 Empty `official_mods` in `whitelist` mode = **setup mode**: everyone is allowed
 (with a loud log warning) until you capture a snapshot.
@@ -262,8 +301,21 @@ captured). Output **separates real player-installed mods from platform noise**
 (minecraft, loader, fabric-api, neoforge, the anticheat itself, etc.) so staff
 see the meaningful list.
 
-View it with `/fiwmods profile <name>` — shows grouped current mods + recent
-changes, useful for spotting "this player just added freecam".
+Profiles also store resource packs in two sections:
+
+- active resource packs — currently enabled in the client's pack stack,
+- inactive resource packs — installed/available in the client's resource pack
+  folder but not currently enabled.
+
+Resource pack history records `added`, `enabled`, `disabled`, `removed`, and
+`updated` events. "Removed" means the companion mod saw the pack in an earlier
+report and no longer sees it in a later report; it cannot prove a pack existed
+if the player installed and deleted it before ever reporting to the server.
+
+View it with `/fiwmods profile <name>` — shows grouped current mods, active and
+inactive resource packs, plus recent changes. This is useful for spotting "this
+player just added freecam" or "this player enabled and then removed an x-ray
+pack".
 
 ---
 
@@ -276,16 +328,17 @@ changes, useful for spotting "this player just added freecam".
 | `/fiwmods reload` | Reload config + bundled signatures from disk |
 | `/fiwmods snapshot server` | Capture the **server's own** loaded mods as the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as the whitelist |
-| `/fiwmods profile <name>` | Show a player's grouped current mods + recent history |
+| `/fiwmods profile <name>` | Show a player's grouped current mods, resource packs, and recent history |
 
 ---
 
 ## 11. Performance
 
-All verification is **per-join** and off the main thread for I/O; nothing runs
-per-tick except a lightweight timeout sweep over pending joins. Client-side jar
-hashing happens once at join on the client. TPS impact is effectively zero, even
-at high player counts.
+Mod verification is **per-join** and off the main thread for I/O; nothing runs
+per-tick on the server except a lightweight timeout sweep over pending joins.
+Client-side jar hashing happens once at join on the client. Resource packs are
+scanned on join and then periodically client-side while connected; only changed
+pack sets are sent to the server.
 
 ---
 
@@ -324,6 +377,10 @@ neoforge-1.21.11/ NeoForge 1.21.11 adapter
   or use a less strict preset.
 - **Auto-updating mods (e.g. Essential) break whitelist mode** → pin them via a
   controlled launcher, or keep them in `blacklist` mode.
+- **Resource pack bans log but do not kick** → set
+  `resource_packs.kick_on_banned` to `true`; default behavior is audit-only.
+- **A renamed x-ray pack is not caught by name** → add its SHA-256 fingerprint to
+  `resource_packs.banned_fingerprints` when you know the exact pack file.
 - **Bedrock players kicked** → ensure Floodgate is installed and
   `floodgate_auto` is `true`, or add them to `bypass_players`.
 - **Rolling out on a live server** → set `monitor_only: true` first, watch the

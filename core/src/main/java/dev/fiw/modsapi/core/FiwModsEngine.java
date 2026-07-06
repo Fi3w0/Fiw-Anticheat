@@ -4,6 +4,7 @@ import dev.fiw.modsapi.core.challenge.ChallengeManager;
 import dev.fiw.modsapi.core.config.ModConfig;
 import dev.fiw.modsapi.core.freeze.FreezeTracker;
 import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import dev.fiw.modsapi.core.profile.PlayerProfile;
 import dev.fiw.modsapi.core.profile.ProfileStore;
 import dev.fiw.modsapi.core.signature.SignatureDatabase;
@@ -82,20 +83,49 @@ public final class FiwModsEngine {
         return Evaluator.evaluate(mods, config, signatures, exempt);
     }
 
+    /** Evaluate a full client report. {@code exempt} short-circuits to PASS. */
+    public EvaluationResult evaluate(List<ModEntry> mods, List<ResourcePackEntry> resourcePacks, boolean exempt) {
+        return Evaluator.evaluate(mods, resourcePacks, config, signatures, exempt);
+    }
+
+    /** Evaluate a resource-pack-only update after the join response. */
+    public EvaluationResult evaluateResourcePacks(List<ResourcePackEntry> resourcePacks, boolean exempt) {
+        return Evaluator.evaluateResourcePacks(resourcePacks, config, exempt);
+    }
+
     /** Record a profiling entry (no-op if profiling disabled). Logs notable changes. */
     public void recordProfile(UUID uuid, String name, List<ModEntry> mods) {
+        recordProfile(uuid, name, mods, List.of());
+    }
+
+    /** Record a profiling entry with both mods and resource packs. */
+    public void recordProfile(UUID uuid, String name, List<ModEntry> mods, List<ResourcePackEntry> resourcePacks) {
         if (!config.profiling.enabled) return;
         try {
             List<PlayerProfile.Event> events =
-                    profiles.record(uuid, name, mods, config.profiling.max_history);
+                    config.resource_packs != null && config.resource_packs.log
+                            ? profiles.record(uuid, name, mods, resourcePacks, config.profiling.max_history)
+                            : profiles.record(uuid, name, mods, config.profiling.max_history);
             if (!events.isEmpty()) {
-                String summary = events.stream()
-                        .map(e -> e.event + " " + e.id + (e.to != null ? " (" + e.from + "→" + e.to + ")" : ""))
-                        .collect(Collectors.joining(", "));
+                String summary = summarizeEvents(events);
                 platform.logInfo("Profile change for " + name + ": " + summary);
             }
         } catch (IOException e) {
             platform.logError("Failed to write profile for " + name, e);
+        }
+    }
+
+    /** Record a resource-pack-only profile update without incrementing the join counter. */
+    public void recordResourcePacks(UUID uuid, String name, List<ResourcePackEntry> resourcePacks) {
+        if (!config.profiling.enabled || config.resource_packs == null || !config.resource_packs.log) return;
+        try {
+            List<PlayerProfile.Event> events =
+                    profiles.recordResourcePacks(uuid, name, resourcePacks, config.profiling.max_history);
+            if (!events.isEmpty()) {
+                platform.logInfo("Resource pack change for " + name + ": " + summarizeEvents(events));
+            }
+        } catch (IOException e) {
+            platform.logError("Failed to write resource pack profile for " + name, e);
         }
     }
 
@@ -109,5 +139,17 @@ public final class FiwModsEngine {
         } catch (IOException e) {
             platform.logError("Failed to save snapshot", e);
         }
+    }
+
+    private static String summarizeEvents(List<PlayerProfile.Event> events) {
+        return events.stream()
+                .map(e -> {
+                    String type = e.type == null || e.type.isBlank() ? "mod" : e.type;
+                    String name = e.name == null || e.name.isBlank() ? e.id : e.name;
+                    String state = e.state == null || e.state.isBlank() ? "" : " [" + e.state + "]";
+                    String update = e.to != null ? " (" + e.from + "→" + e.to + ")" : "";
+                    return e.event + " " + type + " " + name + state + update;
+                })
+                .collect(Collectors.joining(", "));
     }
 }

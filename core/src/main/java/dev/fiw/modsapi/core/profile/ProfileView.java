@@ -13,6 +13,8 @@ public final class ProfileView {
         HEADER,
         MODS,
         PLATFORM,
+        RESOURCE_PACKS_ACTIVE,
+        RESOURCE_PACKS_INACTIVE,
         CHANGES,
         EVENT,
         EMPTY
@@ -46,12 +48,19 @@ public final class ProfileView {
     public static List<CommandLine> commandRows(PlayerProfile profile, String requestedName) {
         Groups groups = group(profile);
         int total = profile.currentMods == null ? 0 : profile.currentMods.size();
+        int activePacks = profile.activeResourcePacks == null ? 0 : profile.activeResourcePacks.size();
+        int inactivePacks = profile.inactiveResourcePacks == null ? 0 : profile.inactiveResourcePacks.size();
         List<CommandLine> lines = new ArrayList<>();
         lines.add(new CommandLine(LineType.HEADER, "[FiwAntiCheat] " + requestedName + " - " + groups.visibleMods().size()
                 + " mods, " + groups.platformMods().size() + " platform entries, "
+                + activePacks + " active packs, " + inactivePacks + " inactive packs, "
                 + total + " total, " + profile.joins + " joins (first seen " + profile.firstSeen + ")"));
         lines.addAll(wrapped(LineType.MODS, "Mods", groups.visibleMods()));
         lines.addAll(wrapped(LineType.PLATFORM, "Platform", groups.platformMods()));
+        lines.addAll(wrappedPacks(LineType.RESOURCE_PACKS_ACTIVE, "Resource packs active",
+                profile.activeResourcePacks == null ? List.of() : profile.activeResourcePacks));
+        lines.addAll(wrappedPacks(LineType.RESOURCE_PACKS_INACTIVE, "Resource packs inactive",
+                profile.inactiveResourcePacks == null ? List.of() : profile.inactiveResourcePacks));
         lines.add(new CommandLine(LineType.CHANGES, "Recent changes:"));
         int from = profile.history == null ? 0 : Math.max(0, profile.history.size() - 8);
         int size = profile.history == null ? 0 : profile.history.size();
@@ -60,9 +69,7 @@ public final class ProfileView {
         } else {
             for (int i = from; i < size; i++) {
                 PlayerProfile.Event e = profile.history.get(i);
-                lines.add(new CommandLine(LineType.EVENT, "  " + e.time + "  " + e.event + " " + e.id
-                        + (e.to != null ? " (" + e.from + " -> " + e.to + ")"
-                        : (e.version != null ? " " + e.version : ""))));
+                lines.add(new CommandLine(LineType.EVENT, eventLine(e)));
             }
         }
         return lines;
@@ -88,6 +95,50 @@ public final class ProfileView {
         }
         lines.add(new CommandLine(type, line.toString()));
         return lines;
+    }
+
+    private static List<CommandLine> wrappedPacks(LineType type,
+                                                  String label,
+                                                  List<PlayerProfile.ResourcePack> packs) {
+        List<CommandLine> lines = new ArrayList<>();
+        if (packs.isEmpty()) {
+            lines.add(new CommandLine(type, label + " (0): none"));
+            return lines;
+        }
+        String prefix = label + " (" + packs.size() + "): ";
+        StringBuilder line = new StringBuilder(prefix);
+        for (int i = 0; i < packs.size(); i++) {
+            PlayerProfile.ResourcePack pack = packs.get(i);
+            String name = pack.name() == null || pack.name().isBlank() ? pack.id() : pack.name();
+            String item = name + " [" + pack.id() + "]";
+            String next = (line.length() == prefix.length() ? "" : ", ") + item;
+            if (line.length() + next.length() > 180) {
+                lines.add(new CommandLine(type, line.toString()));
+                line = new StringBuilder("  ");
+                next = item;
+            }
+            line.append(next);
+        }
+        lines.add(new CommandLine(type, line.toString()));
+        return lines;
+    }
+
+    private static String eventLine(PlayerProfile.Event e) {
+        String type = e.type == null || e.type.isBlank() ? "mod" : e.type;
+        if ("resource_pack".equals(type)) {
+            String name = e.name == null || e.name.isBlank() ? e.id : e.name;
+            String state = e.state == null || e.state.isBlank() ? "" : " [" + e.state + "]";
+            String update = e.to != null ? " (" + shortHash(e.from) + " -> " + shortHash(e.to) + ")" : "";
+            return "  " + e.time + "  " + e.event + " resource_pack " + name + state + update;
+        }
+        return "  " + e.time + "  " + e.event + " " + e.id
+                + (e.to != null ? " (" + e.from + " -> " + e.to + ")"
+                : (e.version != null ? " " + e.version : ""));
+    }
+
+    private static String shortHash(String value) {
+        if (value == null || value.isEmpty()) return "";
+        return value.length() <= 12 ? value : value.substring(0, 12);
     }
 
     private static String versionSuffix(String version) {

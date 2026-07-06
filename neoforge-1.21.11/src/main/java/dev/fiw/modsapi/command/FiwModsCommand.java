@@ -106,6 +106,8 @@ public final class FiwModsCommand {
             case HEADER -> ChatFormatting.AQUA;
             case MODS -> ChatFormatting.GREEN;
             case PLATFORM -> ChatFormatting.DARK_GRAY;
+            case RESOURCE_PACKS_ACTIVE -> ChatFormatting.GOLD;
+            case RESOURCE_PACKS_INACTIVE -> ChatFormatting.GRAY;
             case CHANGES -> ChatFormatting.GOLD;
             case EVENT -> ChatFormatting.YELLOW;
             case EMPTY -> ChatFormatting.GRAY;

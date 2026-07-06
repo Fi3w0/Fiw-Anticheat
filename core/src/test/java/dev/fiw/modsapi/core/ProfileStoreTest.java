@@ -1,6 +1,7 @@
 package dev.fiw.modsapi.core;
 
 import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import dev.fiw.modsapi.core.profile.PlayerProfile;
 import dev.fiw.modsapi.core.profile.ProfileStore;
 import org.junit.jupiter.api.Test;
@@ -54,5 +55,30 @@ class ProfileStoreTest {
         PlayerProfile loaded = store.load(uuid);
         assertNotNull(loaded);
         assertTrue(loaded.history.size() <= 5, "history should be capped at 5");
+    }
+
+    @Test
+    void recordsResourcePackStateChanges(@TempDir Path dir) throws IOException {
+        ProfileStore store = new ProfileStore(dir);
+        UUID uuid = UUID.randomUUID();
+
+        store.record(uuid, "Steve", List.of(new ModEntry("sodium", "1")),
+                List.of(new ResourcePackEntry("file/xray.zip", "xray.zip", "aaa", false)), 200);
+
+        var enabled = store.recordResourcePacks(uuid, "Steve",
+                List.of(new ResourcePackEntry("file/xray.zip", "xray.zip", "aaa", true)), 200);
+        assertTrue(enabled.stream().anyMatch(e -> e.event.equals("enabled")
+                && "resource_pack".equals(e.type)
+                && e.name.equals("xray.zip")));
+
+        var removed = store.recordResourcePacks(uuid, "Steve", List.of(), 200);
+        assertTrue(removed.stream().anyMatch(e -> e.event.equals("removed")
+                && "resource_pack".equals(e.type)
+                && e.name.equals("xray.zip")));
+
+        PlayerProfile loaded = store.load(uuid);
+        assertNotNull(loaded);
+        assertEquals(0, loaded.activeResourcePacks.size());
+        assertEquals(0, loaded.inactiveResourcePacks.size());
     }
 }
