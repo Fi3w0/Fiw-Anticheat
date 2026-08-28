@@ -1,11 +1,13 @@
 name: release
 
-# Tag a version (e.g. `git tag v2.0.2 && git push origin v2.0.2`) to build all
-# targets and publish the jars as a GitHub Release automatically.
+# Manual fallback — run from the Actions tab if the auto-publish in build.yml
+# failed and you need to re-publish a specific tag.
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (e.g. v2.0.2)'
+        required: true
 
 permissions:
   contents: write
@@ -15,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
 
       - name: Set up JDK 17 + 21
         uses: actions/setup-java@v4
@@ -44,8 +48,9 @@ jobs:
 
       - name: Extract changelog section for this tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          # print the "## [VERSION] ..." section up to the next "## [" heading
+          VERSION="${{ inputs.tag }}"
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           awk -v ver="$VERSION" '
             /^## \[/ { if (p) exit; if ($0 ~ ("^## \\[" ver "\\]")) p=1 }
             p { print }
@@ -55,9 +60,81 @@ jobs:
           fi
           echo "--- release notes ---"; cat RELEASE_NOTES.md
 
+      - name: Read release notes for Modrinth
+        id: relnotes
+        run: |
+          {
+            echo 'content<<CHANGELOG_EOF'
+            cat RELEASE_NOTES.md
+            echo CHANGELOG_EOF
+          } >> $GITHUB_OUTPUT
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
           files: release/*.jar
           body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
+
+      - name: Publish to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_API_KEY }}
+          CHANGELOG: ${{ steps.relnotes.outputs.content }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$CHANGELOG" > /tmp/changelog.txt
+
+          publish() {
+            local file="$1" game_ver="$2" loader="$3"
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::Missing jar for Modrinth publish"
+              exit 1
+            fi
+            python3 - "$VERSION" "$game_ver" "$loader" <<'PYEOF'
+          import json, sys, pathlib
+          ver, game_ver, loader = sys.argv[1], sys.argv[2], sys.argv[3]
+          changelog = pathlib.Path('/tmp/changelog.txt').read_text()
+          deps = [{'project_id': 'P7dR8mSH', 'dependency_type': 'required'}] if loader == 'fabric' else []
+          payload = json.dumps({
+            'name': f'Fiw AntiCheat {ver} ({loader} {game_ver})',
+            'version_number': ver,
+            'changelog': changelog,
+            'dependencies': deps,
+            'game_versions': [game_ver],
+            'version_type': 'release',
+            'loaders': [loader],
+            'featured': False,
+            'project_id': 'fiw-anticheat',
+            'file_parts': ['file']
+          })
+          pathlib.Path('/tmp/modrinth_data.json').write_text(payload)
+          PYEOF
+            curl -fsS \
+              -H "Authorization: $MODRINTH_TOKEN" \
+              -F "data=</tmp/modrinth_data.json;type=application/json" \
+              -F "file=@$file" \
+              "https://api.modrinth.com/v2/version"
+            echo " -> published $file ($loader $game_ver)"
+          }
+          publish "release/fiw-anticheat-fabric-1.20.1-${VERSION}.jar"   "1.20.1"  "fabric"
+          publish "release/fiw-anticheat-forge-1.20.1-${VERSION}.jar"    "1.20.1"  "forge"
+          publish "release/fiw-anticheat-fabric-1.21.1-${VERSION}.jar"   "1.21.1"  "fabric"
+          publish "release/fiw-anticheat-neoforge-1.21.1-${VERSION}.jar" "1.21.1"  "neoforge"
+          publish "release/fiw-anticheat-fabric-1.21.11-${VERSION}.jar"  "1.21.11" "fabric"
+          publish "release/fiw-anticheat-neoforge-1.21.11-${VERSION}.jar" "1.21.11" "neoforge"
+
+      - name: Sync project description to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_API_KEY }}
+        run: |
+          python3 -c "
+          import json, pathlib
+          body = pathlib.Path('MODRINTH.md').read_text()
+          pathlib.Path('/tmp/modrinth_project.json').write_text(json.dumps({'body': body}))
+          "
+          curl -sf -X PATCH "https://api.modrinth.com/v2/project/fiw-anticheat" \
+            -H "Authorization: $MODRINTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/modrinth_project.json
+          echo "Description synced."

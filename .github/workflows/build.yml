@@ -6,11 +6,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Install both JDKs. Loom requires the Gradle daemon to run on Java 21 for
       # the 1.21.x targets; the 1.20.1 targets compile against Java 17 via Gradle
@@ -38,3 +43,132 @@ jobs:
           name: fiw-anticheat-jars
           path: '**/build/libs/*.jar'
           if-no-files-found: warn
+
+      # Only auto-publish on direct pushes to main (not PRs)
+      - name: Check if version is new
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        id: ver
+        run: |
+          VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          TAG="v$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          if git tag --list "$TAG" | grep -q "^$TAG$"; then
+            echo "new=false" >> $GITHUB_OUTPUT
+            echo "Tag $TAG already exists — skipping publish."
+          else
+            echo "new=true" >> $GITHUB_OUTPUT
+            echo "New version $TAG — will publish."
+          fi
+
+      - name: Collect loader jars
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          mkdir -p release
+          # production jars only: drop sources/dev jars and the internal core library
+          find . -path '*/build/libs/*.jar' \
+            ! -name '*-sources.jar' ! -name '*-dev.jar' ! -name '*-shadow.jar' \
+            ! -name '*core*.jar' -exec cp -v {} release/ \;
+          ls -la release
+
+      - name: Extract changelog section
+        if: steps.ver.outputs.new == 'true'
+        id: relnotes
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          awk -v ver="$VERSION" '
+            /^## \[/ { if (p) exit; if ($0 ~ ("^## \\[" ver "\\]")) p=1 }
+            p { print }
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "Fiw AntiCheat $VERSION" > RELEASE_NOTES.md
+          fi
+          cat RELEASE_NOTES.md
+          {
+            echo 'content<<CHANGELOG_EOF'
+            cat RELEASE_NOTES.md
+            echo CHANGELOG_EOF
+          } >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          git config user.name "Fi3w0"
+          git config user.email "fi3w0@users.noreply.github.com"
+          git tag "${{ steps.ver.outputs.tag }}"
+          git push origin "${{ steps.ver.outputs.tag }}"
+
+      - name: Publish GitHub Release
+        if: steps.ver.outputs.new == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          files: release/*.jar
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: true
+
+      - name: Publish to Modrinth
+        if: steps.ver.outputs.new == 'true'
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_API_KEY }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          CHANGELOG: ${{ steps.relnotes.outputs.content }}
+        run: |
+          set -euo pipefail
+          # Write changelog to file to avoid shell escaping issues
+          printf '%s' "$CHANGELOG" > /tmp/changelog.txt
+
+          publish() {
+            local file="$1" game_ver="$2" loader="$3"
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::Missing jar for Modrinth publish"
+              exit 1
+            fi
+            python3 - "$VERSION" "$game_ver" "$loader" <<'PYEOF'
+          import json, sys, pathlib
+          ver, game_ver, loader = sys.argv[1], sys.argv[2], sys.argv[3]
+          changelog = pathlib.Path('/tmp/changelog.txt').read_text()
+          deps = [{'project_id': 'P7dR8mSH', 'dependency_type': 'required'}] if loader == 'fabric' else []
+          payload = json.dumps({
+            'name': f'Fiw AntiCheat {ver} ({loader} {game_ver})',
+            'version_number': ver,
+            'changelog': changelog,
+            'dependencies': deps,
+            'game_versions': [game_ver],
+            'version_type': 'release',
+            'loaders': [loader],
+            'featured': False,
+            'project_id': 'fiw-anticheat',
+            'file_parts': ['file']
+          })
+          pathlib.Path('/tmp/modrinth_data.json').write_text(payload)
+          PYEOF
+            curl -fsS \
+              -H "Authorization: $MODRINTH_TOKEN" \
+              -F "data=</tmp/modrinth_data.json;type=application/json" \
+              -F "file=@$file" \
+              "https://api.modrinth.com/v2/version"
+            echo " -> published $file ($loader $game_ver)"
+          }
+          publish "release/fiw-anticheat-fabric-1.20.1-${VERSION}.jar"   "1.20.1"  "fabric"
+          publish "release/fiw-anticheat-forge-1.20.1-${VERSION}.jar"    "1.20.1"  "forge"
+          publish "release/fiw-anticheat-fabric-1.21.1-${VERSION}.jar"   "1.21.1"  "fabric"
+          publish "release/fiw-anticheat-neoforge-1.21.1-${VERSION}.jar" "1.21.1"  "neoforge"
+          publish "release/fiw-anticheat-fabric-1.21.11-${VERSION}.jar"  "1.21.11" "fabric"
+          publish "release/fiw-anticheat-neoforge-1.21.11-${VERSION}.jar" "1.21.11" "neoforge"
+
+      - name: Sync project description to Modrinth
+        if: steps.ver.outputs.new == 'true'
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_API_KEY }}
+        run: |
+          python3 -c "
+          import json, pathlib
+          body = pathlib.Path('MODRINTH.md').read_text()
+          pathlib.Path('/tmp/modrinth_project.json').write_text(json.dumps({'body': body}))
+          "
+          curl -sf -X PATCH "https://api.modrinth.com/v2/project/fiw-anticheat" \
+            -H "Authorization: $MODRINTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d @/tmp/modrinth_project.json
+          echo "Description synced."
