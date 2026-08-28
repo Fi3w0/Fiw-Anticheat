@@ -105,7 +105,7 @@ jobs:
             'version_type': 'release',
             'loaders': [loader],
             'featured': False,
-            'project_id': 'fiw-anticheat',
+            'project_id': 'BUXFUwPg',  # actual Modrinth project id; the slug "fiw-anticheat" is rejected here (base62 field, no hyphens allowed)
             'file_parts': ['file']
           })
           pathlib.Path('/tmp/modrinth_data.json').write_text(payload)
