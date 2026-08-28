@@ -144,7 +144,12 @@ Config por defecto completa:
     "banned_packs": [],
     "banned_fingerprints": []
   },
-  "exemptions": { "floodgate_auto": true, "bypass_players": [] },
+  "exemptions": {
+    "floodgate_auto": true,
+    "bypass_players": [],
+    "player_overrides": {},
+    "escalation_rules": []
+  },
   "profiling": { "enabled": true, "max_history": 200 },
   "whitelist": { "require_all": true, "official_mods": [] }
 }
@@ -188,8 +193,52 @@ mods.
 
 | Clave | Tipo | Default | Significado |
 |---|---|---|---|
-| `floodgate_auto` | bool | `true` | Exime automaticamente a jugadores Bedrock/Floodgate (dependencia blanda por reflexion; no hace nada si Floodgate no esta). |
-| `bypass_players` | string[] | `[]` | **Nombres o UUIDs** que saltan la verificacion por completo (staff). |
+| `floodgate_auto` | bool | `true` | Exime automaticamente a jugadores Bedrock/Floodgate (dependencia blanda por reflexion; no hace nada si Floodgate no esta). Internamente resuelve al nivel `bypass`. |
+| `bypass_players` | string[] | `[]` | **Nombres o UUIDs** que saltan la verificacion por completo (atajo heredado para un permiso `bypass` permanente; sigue funcionando). |
+| `player_overrides` | map | `{}` | Niveles de exencion por jugador, indexados por nombre en minusculas o UUID. Se gestionan con `/fiwmods exempt add\|remove\|list` (ver seccion 10), aunque la config es JSON plano si prefieres editarla directamente. |
+| `escalation_rules` | object[] | `[]` | Reglas que aplican automaticamente un nivel tras detecciones repetidas (ver "Reglas de escalado" abajo). |
+
+#### Niveles de exencion por jugador
+
+`bypass_players` es un atajo de todo o nada. `player_overrides` soporta seis
+niveles, cada entrada con esta forma:
+
+```jsonc
+"player_overrides": {
+  "steve": { "tier": "silent", "expires_at": null, "reason": "tester de confianza" },
+  "griefer123": { "tier": "preset", "preset": "strict", "expires_at": 1735689600000 }
+}
+```
+
+| Nivel | Escaneado? | Expulsado? | Alerta a staff? | Notas |
+|---|---|---|---|---|
+| `bypass` | No - se salta al entrar, antes del desafio | Nunca | Nunca | Igual que una entrada en `bypass_players`, expresada como nivel (y puede llevar expiracion). |
+| `silent` | Si | Nunca | Nunca | El log de consola y el historial de perfil se siguen registrando, en silencio - sin expulsion, sin aviso a staff. |
+| `monitor` | Si | Nunca | Si | Version por jugador del `monitor_only` global. |
+| `quiet_kick` | Si | Normal (decide la deteccion real) | Nunca | Las expulsiones ocurren igual que sin override; solo se suprime la alerta de staff. |
+| `preset:<nombre>` | Si, contra `<nombre>` en vez de `detection.preset` | Normal | Normal | `<nombre>` es `strict`, `balanced`, `lenient` o `custom` (custom reutiliza el `detection.block` del propio servidor). |
+| `force_block` | No - expulsado al entrar, antes del desafio | Siempre | Nunca | Lista de bloqueo manual por jugador para reincidentes; salta el escaneo por completo. |
+
+`expires_at` es un timestamp en milisegundos epoch; `null`/ausente significa
+permanente. Un permiso vencido se purga automaticamente la proxima vez que se
+evalua a ese jugador - no hace falta reiniciar ni recargar.
+
+#### Reglas de escalado
+
+```jsonc
+"escalation_rules": [
+  { "enabled": true, "detection_count": 5, "window_hours": 4,
+    "action_tier": "force_block", "duration_hours": 4 }
+]
+```
+
+Cada regla vigila cuantas detecciones reales acumula un jugador dentro de
+`window_hours`; al llegar a `detection_count`, se otorga `action_tier`
+automaticamente por `duration_hours` (usando el mismo mecanismo de expiracion
+que un permiso manual). Las reglas se revisan en orden y solo la primera que
+coincide se aplica por evento de deteccion. Una escalada **nunca** sobrescribe
+un nivel que un admin ya otorgo - si el jugador ya tiene un override activo,
+las reglas de escalado se saltan para el hasta que expire o se elimine.
 
 ### `profiling`
 
@@ -216,7 +265,14 @@ refrescar las huellas.
 
 Por cada entrada, en orden:
 
-1. **Exencion** (Bedrock por Floodgate o `bypass_players`) -> **PASS**.
+1. **Nivel de exencion** (Bedrock por Floodgate, `bypass_players` o
+   `player_overrides`, ver seccion 5) se resuelve primero:
+   - `bypass` -> **PASS**, sin escaneo.
+   - `force_block` -> **KICK**, sin escaneo.
+   - cualquier otro nivel (`silent`, `monitor`, `quiet_kick`, `preset:<nombre>`,
+     o sin override) continua al escaneo normal de abajo; `preset:<nombre>`
+     sustituye el mapa de bloqueo por categoria de ese preset solo para el
+     paso 2.
 2. **Blocklist** (corre en ambos modos). Por cada mod reportado, se compara con la
    base de firmas (seccion 8). Si una firma coincide, su categoria esta activada y
    el id no esta en `allow_overrides` -> se registra una deteccion. Los ids en
@@ -231,6 +287,10 @@ Por cada entrada, en orden:
      (mod desconocido -> kick), exige las huellas fijadas (no coincide -> kick), y
      si `require_all`, expulsa cuando falta un mod oficial.
 5. **`monitor_only`** suprime *todos* los kicks: solo registra las detecciones.
+   Un nivel `monitor` o `silent` hace lo mismo para ese jugador, sin importar
+   el `monitor_only` global; `silent` ademas suprime la alerta a staff, y
+   `quiet_kick` deja que la expulsion ocurra normalmente pero suprime solo la
+   alerta a staff.
 
 `official_mods` vacio en modo `whitelist` = **modo setup**: todos pueden entrar
 (con un aviso fuerte en el log) hasta que captures un snapshot.
@@ -339,6 +399,9 @@ de x-ray".
 | `/fiwmods snapshot server` | Captura los mods del **propio servidor** como whitelist |
 | `/fiwmods snapshot player <nombre>` | Captura los mods reportados por un jugador conectado como whitelist |
 | `/fiwmods profile <nombre>` | Muestra mods, resource packs e historial reciente |
+| `/fiwmods exempt add <jugador> <nivel> [horas] [preset]` | Otorga un nivel de exencion (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). `[horas]` fija una expiracion (omite o usa `0` para permanente); `[preset]` solo es necesario cuando `<nivel>` es `preset`. |
+| `/fiwmods exempt remove <jugador>` | Elimina cualquier exencion (override o entrada heredada de bypass) para `<jugador>` |
+| `/fiwmods exempt list` | Lista todas las exenciones activas y su nivel/expiracion |
 
 ---
 

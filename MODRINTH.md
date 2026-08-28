@@ -50,6 +50,9 @@ NeoForge does not publish a real Minecraft 1.20.1 artifact on the current NeoFor
 - **Monitor-only rollout** - log and alert staff without kicking while tuning your rules
 - **Staff alerts** - online operators can see detections as they happen
 - **Bypass list** - exempt trusted accounts or test users by name or UUID
+- **Tiered exemptions** - grant `bypass`, `silent`, `monitor`, `quiet_kick`, a
+  pinned `preset`, or `force_block` per player, with optional expiry and
+  admin-defined auto-escalation rules after repeated detections
 - **Floodgate/Geyser support** - optional Bedrock-player exemption when Floodgate is present
 - **Hot reload** - reload config and signatures without restarting
 - **Server snapshots** - capture the server or an online player as the official whitelist baseline
@@ -66,6 +69,9 @@ All commands require permission level 4.
 | `/fiwmods snapshot server` | Capture the server's loaded mods into the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods into the whitelist |
 | `/fiwmods profile <name>` | Show grouped current mods, resource packs, and recent profile history |
+| `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant an exemption tier, optionally with an expiry and a preset name |
+| `/fiwmods exempt remove <player>` | Remove any exemption for a player |
+| `/fiwmods exempt list` | List all active exemptions |
 
 ---
 
@@ -92,7 +98,9 @@ Main options:
 | `resource_packs.kick_on_banned` | Kick for configured pack matches; default is log-only |
 | `resource_packs.banned_packs` | Add exact pack ids or display names to flag |
 | `resource_packs.banned_fingerprints` | Add exact SHA-256 pack hashes to flag renamed packs |
-| `exemptions.bypass_players` | Bypass specific names or UUIDs |
+| `exemptions.bypass_players` | Full bypass for specific names or UUIDs (no scan at all) |
+| `exemptions.player_overrides` | Per-player exemption tiers granted via `/fiwmods exempt add` (silent, monitor, quiet_kick, preset, force_block), with optional expiry |
+| `exemptions.escalation_rules` | Auto-apply a tier after a player racks up repeated detections in a time window |
 | `whitelist.official_mods` | Official modpack snapshot used in whitelist mode |
 
 ---

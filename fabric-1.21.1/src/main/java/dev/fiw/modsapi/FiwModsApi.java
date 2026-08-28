@@ -4,6 +4,8 @@ import dev.fiw.modsapi.command.FiwModsCommand;
 import dev.fiw.modsapi.compat.FloodgateDetector;
 import dev.fiw.modsapi.core.FiwModsEngine;
 import dev.fiw.modsapi.core.challenge.ChallengeManager;
+import dev.fiw.modsapi.core.exemption.ExemptionResolution;
+import dev.fiw.modsapi.core.exemption.ExemptionTier;
 import dev.fiw.modsapi.core.freeze.FreezeState;
 import dev.fiw.modsapi.core.model.ModEntry;
 import dev.fiw.modsapi.core.model.ResourcePackEntry;
@@ -41,9 +43,16 @@ public final class FiwModsApi implements ModInitializer {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             if (!server.isDedicated()) return;
             ServerPlayerEntity player = handler.player;
-            if (isExempt(player)) {
+            ExemptionResolution resolution = resolveExemption(player);
+            if (resolution.tier() == ExemptionTier.BYPASS) {
                 LOGGER.info("[FiwAntiCheat] {} is exempt (Bedrock/bypass) — skipping verification",
                         player.getName().getString());
+                return;
+            }
+            if (resolution.tier() == ExemptionTier.FORCE_BLOCK) {
+                LOGGER.warn("[FiwAntiCheat] Force-blocking {} on join (admin override)",
+                        player.getName().getString());
+                player.networkHandler.disconnect(Text.literal(engine.config().kick_message));
                 return;
             }
             freezeAndChallenge(player, false);
@@ -118,15 +127,16 @@ public final class FiwModsApi implements ModInitializer {
             return;
         }
 
-        boolean exempt = isExempt(player);
-        EvaluationResult result = engine.evaluate(mods, resourcePacks, exempt);
+        ExemptionResolution resolution = resolveExemption(player);
+        EvaluationResult result = engine.evaluate(mods, resourcePacks, resolution);
+        engine.checkEscalation(uuid, name, result);
 
         if (result.hasDetections()) {
             for (EvaluationResult.Detected d : result.detected()) {
                 LOGGER.warn("[FiwAntiCheat] {} flagged: {} [{}] (id={})",
                         name, d.modName(), d.category(), d.modId());
             }
-            if (engine.config().detection.alert_staff) {
+            if (engine.config().detection.alert_staff && !result.suppressAlert()) {
                 StringBuilder sb = new StringBuilder("[FiwAntiCheat] ").append(name).append(" using: ");
                 for (int i = 0; i < result.detected().size(); i++) {
                     if (i > 0) sb.append(", ");
@@ -149,17 +159,25 @@ public final class FiwModsApi implements ModInitializer {
     public static void handleResourcePackUpdate(MinecraftServer server,
                                                 ServerPlayerEntity player,
                                                 List<ResourcePackEntry> resourcePacks) {
-        if (isExempt(player)) return;
+        ExemptionResolution resolution = resolveExemption(player);
+        if (resolution.tier() == ExemptionTier.BYPASS) return;
+        UUID uuid = player.getUuid();
         String name = player.getName().getString();
-        engine.recordResourcePacks(player.getUuid(), name, resourcePacks);
+        if (resolution.tier() == ExemptionTier.FORCE_BLOCK) {
+            LOGGER.warn("[FiwAntiCheat] Force-blocking {} (admin override)", name);
+            player.networkHandler.disconnect(Text.literal(engine.config().kick_message));
+            return;
+        }
+        engine.recordResourcePacks(uuid, name, resourcePacks);
 
-        EvaluationResult result = engine.evaluateResourcePacks(resourcePacks, false);
+        EvaluationResult result = engine.evaluateResourcePacks(resourcePacks, resolution);
+        engine.checkEscalation(uuid, name, result);
         if (result.hasDetections()) {
             for (EvaluationResult.Detected d : result.detected()) {
                 LOGGER.warn("[FiwAntiCheat] {} flagged: {} [{}] (id={})",
                         name, d.modName(), d.category(), d.modId());
             }
-            if (engine.config().detection.alert_staff) {
+            if (engine.config().detection.alert_staff && !result.suppressAlert()) {
                 StringBuilder sb = new StringBuilder("[FiwAntiCheat] ").append(name).append(" using: ");
                 for (int i = 0; i < result.detected().size(); i++) {
                     if (i > 0) sb.append(", ");
@@ -174,10 +192,12 @@ public final class FiwModsApi implements ModInitializer {
         }
     }
 
-    private static boolean isExempt(ServerPlayerEntity player) {
+    private static ExemptionResolution resolveExemption(ServerPlayerEntity player) {
         UUID uuid = player.getUuid();
-        return (engine.config().exemptions.floodgate_auto && FloodgateDetector.isBedrockPlayer(uuid))
-                || engine.isBypassed(player.getName().getString(), uuid);
+        if (engine.config().exemptions.floodgate_auto && FloodgateDetector.isBedrockPlayer(uuid)) {
+            return ExemptionResolution.of(ExemptionTier.BYPASS);
+        }
+        return engine.resolveExemption(player.getName().getString(), uuid);
     }
 
     /** Send an alert to all online operators. */

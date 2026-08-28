@@ -61,7 +61,36 @@ public final class ModConfig {
 
     public static final class Exemptions {
         public boolean floodgate_auto = true;
-        public List<String> bypass_players = new ArrayList<>(); // names or UUIDs
+        public List<String> bypass_players = new ArrayList<>(); // names or UUIDs; legacy full-bypass shortcut
+        public Map<String, PlayerOverride> player_overrides = new LinkedHashMap<>(); // key = lowercase name or UUID
+        public List<EscalationRule> escalation_rules = new ArrayList<>();
+    }
+
+    /** A single admin- or escalation-granted per-player tier (see {@code exemption.ExemptionTier}). */
+    public static final class PlayerOverride {
+        public String tier;       // silent | monitor | quiet_kick | preset | force_block | bypass
+        public String preset;     // required when tier == "preset": strict|balanced|lenient|custom
+        public Long expires_at;   // epoch millis; null = permanent
+        public String reason;     // free text, e.g. "auto-escalation rule"
+
+        public PlayerOverride() {}
+
+        public PlayerOverride(String tier, String preset, Long expiresAt, String reason) {
+            this.tier = tier;
+            this.preset = preset;
+            this.expires_at = expiresAt;
+            this.reason = reason;
+        }
+    }
+
+    /** Auto-applies {@code action_tier} for {@code duration_hours} once a player hits {@code detection_count}
+     *  detections within {@code window_hours}. Only the first enabled rule matched per event fires. */
+    public static final class EscalationRule {
+        public boolean enabled = true;
+        public int detection_count;
+        public int window_hours;
+        public String action_tier;
+        public int duration_hours;
     }
 
     public static final class ResourcePacks {
@@ -143,6 +172,8 @@ public final class ModConfig {
         if (resource_packs.banned_fingerprints == null) resource_packs.banned_fingerprints = new ArrayList<>();
         if (exemptions == null) exemptions = new Exemptions();
         if (exemptions.bypass_players == null) exemptions.bypass_players = new ArrayList<>();
+        if (exemptions.player_overrides == null) exemptions.player_overrides = new LinkedHashMap<>();
+        if (exemptions.escalation_rules == null) exemptions.escalation_rules = new ArrayList<>();
         if (profiling == null) profiling = new Profiling();
         if (whitelist == null) whitelist = new Whitelist();
         if (whitelist.official_mods == null) whitelist.official_mods = new ArrayList<>();

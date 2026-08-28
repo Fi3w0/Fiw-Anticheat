@@ -2,6 +2,43 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
+## [2.1.0] - Tiered per-player exemptions
+
+### Added
+
+- Added `/fiwmods exempt add <player> <tier> [hours] [preset]`, `/fiwmods exempt
+  remove <player>`, and `/fiwmods exempt list` commands for granting, revoking,
+  and reviewing per-player exemption tiers.
+- Added six exemption tiers, replacing the old all-or-nothing bypass list:
+  - `bypass` - skips scanning entirely and always allows the player to join
+    (the original bypass behavior).
+  - `silent` - still scanned and profiled, but never kicked and never alerts
+    staff; only a quiet console log line records what they're running.
+  - `monitor` - still scanned, profiled, and alerts staff, but never kicked.
+  - `quiet_kick` - normal detection and kick behavior, but the staff chat
+    alert is suppressed.
+  - `preset:<strict|balanced|lenient|custom>` - evaluates that one player
+    against a pinned preset instead of the server's global preset.
+  - `force_block` - always kicked on join, before any scan, for repeat
+    offenders regardless of what mod list they report.
+- Added optional expiry (`[hours]`) on any granted exemption; expired grants
+  are purged automatically the next time that player is evaluated.
+- Added `exemptions.escalation_rules` config: admin-defined rules that
+  auto-apply a tier (e.g. `force_block` for 4 hours) once a player racks up a
+  configured number of detections within a time window. An escalation never
+  overrides a tier an admin already granted.
+- Added `exemptions.player_overrides` config map backing the new tiers
+  (`exemptions.bypass_players` is unchanged and still works for permanent
+  full bypasses).
+
+### Changed
+
+- The legacy `exemptions.bypass_players` list is still honored as a permanent
+  `bypass` grant; new grants from `/fiwmods exempt add` are written to
+  `exemptions.player_overrides` instead.
+- Floodgate/Geyser auto-exemption now resolves to the `bypass` tier internally
+  (same behavior as before, just expressed through the new tier system).
+
 ## [2.0.2] - Resource pack auditing
 
 ### Added

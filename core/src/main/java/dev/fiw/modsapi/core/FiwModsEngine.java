@@ -2,6 +2,10 @@ package dev.fiw.modsapi.core;
 
 import dev.fiw.modsapi.core.challenge.ChallengeManager;
 import dev.fiw.modsapi.core.config.ModConfig;
+import dev.fiw.modsapi.core.config.Preset;
+import dev.fiw.modsapi.core.exemption.ExemptionResolution;
+import dev.fiw.modsapi.core.exemption.ExemptionTier;
+import dev.fiw.modsapi.core.exemption.ExemptionView;
 import dev.fiw.modsapi.core.freeze.FreezeTracker;
 import dev.fiw.modsapi.core.model.ModEntry;
 import dev.fiw.modsapi.core.model.ResourcePackEntry;
@@ -13,8 +17,11 @@ import dev.fiw.modsapi.core.verify.EvaluationResult;
 import dev.fiw.modsapi.core.verify.Evaluator;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -68,7 +75,7 @@ public final class FiwModsEngine {
         return Math.max(1, config.timeout_seconds) * 1000L;
     }
 
-    /** Whether a player (by name + uuid) is exempt via the bypass list. */
+    /** Whether a player (by name + uuid) is exempt via the legacy bypass list. */
     public boolean isBypassed(String name, UUID uuid) {
         Set<String> set = config.exemptions.bypass_players.stream()
                 .filter(s -> s != null)
@@ -78,19 +85,183 @@ public final class FiwModsEngine {
                 || (uuid != null && set.contains(uuid.toString().toLowerCase(Locale.ROOT)));
     }
 
-    /** Evaluate a reported mod list. {@code exempt} short-circuits to PASS. */
-    public EvaluationResult evaluate(List<ModEntry> mods, boolean exempt) {
-        return Evaluator.evaluate(mods, config, signatures, exempt);
+    /**
+     * Resolve the active per-player exemption tier. Checks {@code player_overrides} first
+     * (purging any expired grants), then falls back to the legacy {@code bypass_players} list.
+     */
+    public ExemptionResolution resolveExemption(String name, UUID uuid) {
+        purgeExpiredOverrides();
+        ModConfig.PlayerOverride override = findOverride(name, uuid);
+        if (override != null) {
+            ExemptionTier tier = ExemptionTier.fromString(override.tier);
+            if (tier != null) {
+                return new ExemptionResolution(tier, override.preset);
+            }
+        }
+        if (isBypassed(name, uuid)) {
+            return ExemptionResolution.of(ExemptionTier.BYPASS);
+        }
+        return ExemptionResolution.NONE;
     }
 
-    /** Evaluate a full client report. {@code exempt} short-circuits to PASS. */
-    public EvaluationResult evaluate(List<ModEntry> mods, List<ResourcePackEntry> resourcePacks, boolean exempt) {
-        return Evaluator.evaluate(mods, resourcePacks, config, signatures, exempt);
+    private ModConfig.PlayerOverride findOverride(String name, UUID uuid) {
+        Map<String, ModConfig.PlayerOverride> overrides = config.exemptions.player_overrides;
+        if (overrides == null) return null;
+        if (name != null) {
+            ModConfig.PlayerOverride byName = overrides.get(name.toLowerCase(Locale.ROOT));
+            if (byName != null) return byName;
+        }
+        if (uuid != null) {
+            return overrides.get(uuid.toString().toLowerCase(Locale.ROOT));
+        }
+        return null;
+    }
+
+    private void purgeExpiredOverrides() {
+        Map<String, ModConfig.PlayerOverride> overrides = config.exemptions.player_overrides;
+        if (overrides == null || overrides.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        boolean changed = overrides.entrySet().removeIf(e ->
+                e.getValue() != null && e.getValue().expires_at != null && e.getValue().expires_at <= now);
+        if (changed) {
+            try {
+                config.save(platform.configDir());
+            } catch (IOException e) {
+                platform.logError("Failed to persist expired exemption purge", e);
+            }
+        }
+    }
+
+    /**
+     * Grant a per-player exemption tier. {@code hours} null/&lt;=0 means permanent.
+     * Returns an error message on invalid input, or {@code null} on success.
+     */
+    public String addExemption(String key, ExemptionTier tier, String presetOverride, Integer hours) {
+        return addExemption(key, tier, presetOverride, hours, null);
+    }
+
+    private String addExemption(String key, ExemptionTier tier, String presetOverride, Integer hours, String reason) {
+        if (key == null || key.isBlank()) return "player name or UUID is required";
+        if (tier == null || tier == ExemptionTier.NONE) {
+            return "tier must be one of: bypass, silent, monitor, quiet_kick, preset, force_block";
+        }
+        String presetName = null;
+        if (tier == ExemptionTier.PRESET) {
+            if (presetOverride == null) {
+                return "preset tier requires a preset name: strict, balanced, lenient, or custom";
+            }
+            try {
+                presetName = Preset.valueOf(presetOverride.trim().toUpperCase(Locale.ROOT)).name().toLowerCase(Locale.ROOT);
+            } catch (IllegalArgumentException e) {
+                return "unknown preset '" + presetOverride + "' — expected strict, balanced, lenient, or custom";
+            }
+        }
+        String normalized = key.toLowerCase(Locale.ROOT);
+        Long expiresAt = (hours != null && hours > 0) ? System.currentTimeMillis() + hours * 3600_000L : null;
+        config.exemptions.player_overrides.put(normalized,
+                new ModConfig.PlayerOverride(tier.name().toLowerCase(Locale.ROOT), presetName, expiresAt, reason));
+        try {
+            config.save(platform.configDir());
+            platform.logInfo("Granted '" + tier.name().toLowerCase(Locale.ROOT) + "' exemption to " + key
+                    + (expiresAt != null ? " (expires " + Instant.ofEpochMilli(expiresAt) + ")" : " (permanent)"));
+        } catch (IOException e) {
+            platform.logError("Failed to save exemption grant for " + key, e);
+            return "applied in memory but failed to write config.json — check server logs";
+        }
+        return null;
+    }
+
+    /** Remove any exemption (override map or legacy bypass list) for a name/UUID key. */
+    public boolean removeExemption(String key) {
+        if (key == null || key.isBlank()) return false;
+        String normalized = key.toLowerCase(Locale.ROOT);
+        boolean removed = config.exemptions.player_overrides.remove(normalized) != null;
+        removed |= config.exemptions.bypass_players.removeIf(s -> s != null && s.equalsIgnoreCase(key));
+        if (removed) {
+            try {
+                config.save(platform.configDir());
+                platform.logInfo("Removed exemption for " + key);
+            } catch (IOException e) {
+                platform.logError("Failed to save exemption removal for " + key, e);
+            }
+        }
+        return removed;
+    }
+
+    /** Formatted rows for {@code /fiwmods exempt list}. */
+    public List<ExemptionView.CommandLine> listExemptions() {
+        return ExemptionView.commandRows(config);
+    }
+
+    /**
+     * Track a detection event for escalation-rule purposes and auto-apply a tier once a rule's
+     * threshold is met. No-ops if there are no detections, no enabled rules, or the player already
+     * has an active override (never restacks on top of an existing admin/auto grant).
+     */
+    public void checkEscalation(UUID uuid, String name, EvaluationResult result) {
+        if (result == null || !result.hasDetections()) return;
+        List<ModConfig.EscalationRule> rules = config.exemptions.escalation_rules;
+        if (rules == null || rules.isEmpty()) return;
+        if (resolveExemption(name, uuid).tier() != ExemptionTier.NONE) return;
+
+        int maxWindow = 24;
+        boolean anyEnabled = false;
+        for (ModConfig.EscalationRule rule : rules) {
+            if (!rule.enabled) continue;
+            anyEnabled = true;
+            maxWindow = Math.max(maxWindow, rule.window_hours);
+        }
+        if (!anyEnabled) return;
+
+        List<String> timestamps;
+        try {
+            timestamps = profiles.recordDetection(uuid, name, maxWindow);
+        } catch (IOException e) {
+            platform.logError("Failed to record detection for escalation tracking: " + name, e);
+            return;
+        }
+
+        for (ModConfig.EscalationRule rule : rules) {
+            if (!rule.enabled) continue;
+            Instant cutoff = Instant.now().minus(Duration.ofHours(Math.max(1, rule.window_hours)));
+            long count = timestamps.stream().filter(ts -> {
+                try {
+                    return !Instant.parse(ts).isBefore(cutoff);
+                } catch (Exception e) {
+                    return false;
+                }
+            }).count();
+            if (count >= rule.detection_count) {
+                ExemptionTier actionTier = ExemptionTier.fromString(rule.action_tier);
+                if (actionTier == null || actionTier == ExemptionTier.NONE) {
+                    platform.logWarn("Escalation rule has invalid action_tier: " + rule.action_tier);
+                    continue;
+                }
+                String key = uuid != null ? uuid.toString() : name;
+                String err = addExemption(key, actionTier, null, rule.duration_hours, "auto-escalation rule");
+                if (err == null) {
+                    platform.logWarn("[Escalation] " + name + " hit " + count + " detections in " + rule.window_hours
+                            + "h — auto-applying '" + rule.action_tier + "' for " + rule.duration_hours + "h");
+                }
+                return;
+            }
+        }
+    }
+
+    /** Evaluate a reported mod list against the resolved exemption tier. */
+    public EvaluationResult evaluate(List<ModEntry> mods, ExemptionResolution exemption) {
+        return Evaluator.evaluate(mods, config, signatures, exemption);
+    }
+
+    /** Evaluate a full client report against the resolved exemption tier. */
+    public EvaluationResult evaluate(List<ModEntry> mods, List<ResourcePackEntry> resourcePacks,
+                                     ExemptionResolution exemption) {
+        return Evaluator.evaluate(mods, resourcePacks, config, signatures, exemption);
     }
 
     /** Evaluate a resource-pack-only update after the join response. */
-    public EvaluationResult evaluateResourcePacks(List<ResourcePackEntry> resourcePacks, boolean exempt) {
-        return Evaluator.evaluateResourcePacks(resourcePacks, config, exempt);
+    public EvaluationResult evaluateResourcePacks(List<ResourcePackEntry> resourcePacks, ExemptionResolution exemption) {
+        return Evaluator.evaluateResourcePacks(resourcePacks, config, exemption);
     }
 
     /** Record a profiling entry (no-op if profiling disabled). Logs notable changes. */

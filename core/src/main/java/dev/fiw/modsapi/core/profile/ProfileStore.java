@@ -10,6 +10,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -104,6 +105,36 @@ public final class ProfileStore {
         List<PlayerProfile.Event> events = diffResourcePacks(now, profile, resourcePacks);
         appendAndSave(uuid, profile, events, maxHistory);
         return events;
+    }
+
+    /**
+     * Append a detection timestamp for escalation-rule tracking, pruning entries older than
+     * {@code pruneHorizonHours}. Returns the pruned timestamp list (newest last).
+     */
+    public synchronized List<String> recordDetection(UUID uuid, String name, int pruneHorizonHours) throws IOException {
+        PlayerProfile profile = load(uuid);
+        String now = Instant.now().toString();
+
+        if (profile == null) {
+            profile = new PlayerProfile();
+            profile.uuid = uuid.toString();
+            profile.firstSeen = now;
+        }
+        profile.name = name;
+        if (profile.detectionTimestamps == null) profile.detectionTimestamps = new ArrayList<>();
+        profile.detectionTimestamps.add(now);
+
+        Instant cutoff = Instant.now().minus(Duration.ofHours(Math.max(1, pruneHorizonHours)));
+        profile.detectionTimestamps.removeIf(ts -> {
+            try {
+                return Instant.parse(ts).isBefore(cutoff);
+            } catch (Exception e) {
+                return true; // drop unparsable entries rather than let them accumulate forever
+            }
+        });
+
+        save(uuid, profile);
+        return profile.detectionTimestamps;
     }
 
     private static List<PlayerProfile.Event> diffMods(String now, PlayerProfile profile, List<ModEntry> mods) {
@@ -252,6 +283,7 @@ public final class ProfileStore {
         if (profile.activeResourcePacks == null) profile.activeResourcePacks = new ArrayList<>();
         if (profile.inactiveResourcePacks == null) profile.inactiveResourcePacks = new ArrayList<>();
         if (profile.history == null) profile.history = new ArrayList<>();
+        if (profile.detectionTimestamps == null) profile.detectionTimestamps = new ArrayList<>();
     }
 
     private static List<PlayerProfile.Mod> safeMods(List<PlayerProfile.Mod> mods) {

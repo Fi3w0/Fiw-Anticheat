@@ -20,6 +20,8 @@ public final class PlayerProfile {
     public List<ResourcePack> activeResourcePacks = new ArrayList<>();
     public List<ResourcePack> inactiveResourcePacks = new ArrayList<>();
     public List<Event> history = new ArrayList<>();
+    /** ISO-8601 timestamps of recent flagged joins, pruned by age. Feeds escalation rules. */
+    public List<String> detectionTimestamps = new ArrayList<>();
 
     public record Mod(String id, String version) {}
     public record ResourcePack(String id, String name, String fingerprint) {}

@@ -1,6 +1,9 @@
 package dev.fiw.modsapi.core.verify;
 
 import dev.fiw.modsapi.core.config.ModConfig;
+import dev.fiw.modsapi.core.config.Preset;
+import dev.fiw.modsapi.core.exemption.ExemptionResolution;
+import dev.fiw.modsapi.core.exemption.ExemptionTier;
 import dev.fiw.modsapi.core.model.ModEntry;
 import dev.fiw.modsapi.core.model.ResourcePackEntry;
 import dev.fiw.modsapi.core.signature.Signature;
@@ -29,17 +32,22 @@ public final class Evaluator {
     public static EvaluationResult evaluate(List<ModEntry> mods,
                                             ModConfig config,
                                             SignatureDatabase signatures,
-                                            boolean exempt) {
-        return evaluate(mods, List.of(), config, signatures, exempt);
+                                            ExemptionResolution exemption) {
+        return evaluate(mods, List.of(), config, signatures, exemption);
     }
 
     public static EvaluationResult evaluate(List<ModEntry> mods,
                                             List<ResourcePackEntry> resourcePacks,
                                             ModConfig config,
                                             SignatureDatabase signatures,
-                                            boolean exempt) {
-        if (exempt) {
-            return new EvaluationResult(false, config.kick_message, "exempt player — skipped", List.of());
+                                            ExemptionResolution exemption) {
+        ExemptionTier tier = exemption == null ? ExemptionTier.NONE : exemption.tier();
+
+        if (tier == ExemptionTier.BYPASS) {
+            return new EvaluationResult(false, config.kick_message, "bypass exemption — skipped", List.of(), true);
+        }
+        if (tier == ExemptionTier.FORCE_BLOCK) {
+            return new EvaluationResult(true, config.kick_message, "force-blocked (admin override)", List.of(), true);
         }
 
         List<EvaluationResult.Detected> detected = new ArrayList<>();
@@ -48,7 +56,9 @@ public final class Evaluator {
         List<String> reasons = new ArrayList<>();
 
         // --- Layer 1: known-bad blocklist (runs in both modes) ---
-        Map<String, Boolean> blocked = config.resolvedBlock();
+        Map<String, Boolean> blocked = tier == ExemptionTier.PRESET
+                ? Preset.fromString(exemption.presetOverride()).resolve(config.detection.block)
+                : config.resolvedBlock();
         Set<String> overrides = lowerSet(config.detection.allow_overrides);
         Set<String> bannedIds = lowerSet(config.detection.banned_mods);
 
@@ -111,28 +121,41 @@ public final class Evaluator {
                 || (!blockedResourcePacks.isEmpty()
                         && config.resource_packs != null
                         && config.resource_packs.kick_on_banned);
-        // a whitelist setup-mode note is informational, not a violation
-        boolean kick = wouldKick && !config.detection.monitor_only;
+
+        boolean kick;
+        boolean suppressAlert;
+        switch (tier) {
+            case MONITOR -> { kick = false; suppressAlert = false; }
+            case SILENT -> { kick = false; suppressAlert = true; }
+            case QUIET_KICK -> { kick = wouldKick && !config.detection.monitor_only; suppressAlert = true; }
+            default -> { kick = wouldKick && !config.detection.monitor_only; suppressAlert = false; } // NONE, PRESET
+        }
 
         String summary;
         if (reasons.isEmpty()) {
             summary = "OK (" + mods.size() + " mods)";
         } else {
             summary = String.join("; ", reasons);
-            if (wouldKick && config.detection.monitor_only) {
+            if (wouldKick && !kick) {
                 summary = "[MONITOR — not kicked] " + summary;
             }
         }
 
-        return new EvaluationResult(kick, config.kick_message, summary, detected);
+        return new EvaluationResult(kick, config.kick_message, summary, detected, suppressAlert);
     }
 
     public static EvaluationResult evaluateResourcePacks(List<ResourcePackEntry> resourcePacks,
                                                          ModConfig config,
-                                                         boolean exempt) {
-        if (exempt) {
-            return new EvaluationResult(false, config.kick_message, "exempt player — skipped", List.of());
+                                                         ExemptionResolution exemption) {
+        ExemptionTier tier = exemption == null ? ExemptionTier.NONE : exemption.tier();
+
+        if (tier == ExemptionTier.BYPASS) {
+            return new EvaluationResult(false, config.kick_message, "bypass exemption — skipped", List.of(), true);
         }
+        if (tier == ExemptionTier.FORCE_BLOCK) {
+            return new EvaluationResult(true, config.kick_message, "force-blocked (admin override)", List.of(), true);
+        }
+
         List<EvaluationResult.Detected> detected =
                 config.resource_packs == null || !config.resource_packs.log
                         ? List.of()
@@ -140,7 +163,7 @@ public final class Evaluator {
         if (detected.isEmpty()) {
             int packCount = resourcePacks == null ? 0 : resourcePacks.size();
             return new EvaluationResult(false, config.kick_message,
-                    "OK (" + packCount + " resource packs)", List.of());
+                    "OK (" + packCount + " resource packs)", List.of(), false);
         }
         StringBuilder sb = new StringBuilder("banned resource packs: ");
         for (int i = 0; i < detected.size(); i++) {
@@ -150,12 +173,21 @@ public final class Evaluator {
         }
         boolean wouldKick = config.resource_packs != null && config.resource_packs.kick_on_banned;
         if (!wouldKick) sb.append(" (log only)");
+
+        boolean kick;
+        boolean suppressAlert;
+        switch (tier) {
+            case MONITOR -> { kick = false; suppressAlert = false; }
+            case SILENT -> { kick = false; suppressAlert = true; }
+            case QUIET_KICK -> { kick = wouldKick && !config.detection.monitor_only; suppressAlert = true; }
+            default -> { kick = wouldKick && !config.detection.monitor_only; suppressAlert = false; }
+        }
+
         String summary = sb.toString();
-        if (wouldKick && config.detection.monitor_only) {
+        if (wouldKick && !kick) {
             summary = "[MONITOR — not kicked] " + summary;
         }
-        return new EvaluationResult(wouldKick && !config.detection.monitor_only,
-                config.kick_message, summary, detected);
+        return new EvaluationResult(kick, config.kick_message, summary, detected, suppressAlert);
     }
 
     private static List<String> checkWhitelist(List<ModEntry> mods,

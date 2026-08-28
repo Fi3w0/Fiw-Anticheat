@@ -139,7 +139,12 @@ Full default config:
     "banned_packs": [],
     "banned_fingerprints": []
   },
-  "exemptions": { "floodgate_auto": true, "bypass_players": [] },
+  "exemptions": {
+    "floodgate_auto": true,
+    "bypass_players": [],
+    "player_overrides": {},
+    "escalation_rules": []
+  },
   "profiling": { "enabled": true, "max_history": 200 },
   "whitelist": { "require_all": true, "official_mods": [] }
 }
@@ -183,8 +188,52 @@ reporting.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `floodgate_auto` | bool | `true` | Auto-exempt Bedrock/Floodgate players (reflection soft-dependency; no-op if Floodgate absent). |
-| `bypass_players` | string[] | `[]` | Player **names or UUIDs** that skip verification entirely (staff). |
+| `floodgate_auto` | bool | `true` | Auto-exempt Bedrock/Floodgate players (reflection soft-dependency; no-op if Floodgate absent). Internally resolves to the `bypass` tier. |
+| `bypass_players` | string[] | `[]` | Player **names or UUIDs** that skip verification entirely (legacy shortcut for a permanent `bypass` grant; still works). |
+| `player_overrides` | map | `{}` | Per-player exemption tiers, keyed by lowercase name or UUID. Managed with `/fiwmods exempt add\|remove\|list` (see §10) rather than hand-edited, though the config is plain JSON if you prefer to edit it directly. |
+| `escalation_rules` | object[] | `[]` | Rules that auto-apply a tier after repeated detections (see "Escalation rules" below). |
+
+#### Per-player exemption tiers
+
+`bypass_players` is an all-or-nothing shortcut. `player_overrides` supports six
+tiers, each entry shaped like:
+
+```jsonc
+"player_overrides": {
+  "steve": { "tier": "silent", "expires_at": null, "reason": "trusted tester" },
+  "griefer123": { "tier": "preset", "preset": "strict", "expires_at": 1735689600000 }
+}
+```
+
+| Tier | Scanned? | Kicked? | Staff alert? | Notes |
+|---|---|---|---|---|
+| `bypass` | No — skipped at join before any challenge | Never | Never | Same as a `bypass_players` entry, just expressed as a tier (and can carry an expiry). |
+| `silent` | Yes | Never | Never | Console log line + profile history still recorded, just quietly — no kick, no staff ping. |
+| `monitor` | Yes | Never | Yes | Per-player version of global `monitor_only`. |
+| `quiet_kick` | Yes | Normal (real detection decides) | Never | Kicks happen exactly as they would with no override; only the staff chat alert is suppressed. |
+| `preset:<name>` | Yes, against `<name>` instead of `detection.preset` | Normal | Normal | `<name>` is `strict`, `balanced`, `lenient`, or `custom` (custom reuses the server's own `detection.block` map). |
+| `force_block` | No — kicked at join before any challenge | Always | Never | Manual per-player deny-list for repeat offenders; bypasses the scan entirely. |
+
+`expires_at` is an epoch-millis timestamp; `null`/absent means permanent. An
+expired grant is purged automatically the next time that player is evaluated —
+no restart or reload needed.
+
+#### Escalation rules
+
+```jsonc
+"escalation_rules": [
+  { "enabled": true, "detection_count": 5, "window_hours": 4,
+    "action_tier": "force_block", "duration_hours": 4 }
+]
+```
+
+Each rule watches how many real detections a player accumulates within
+`window_hours`; once `detection_count` is reached, `action_tier` is granted
+automatically for `duration_hours` (using the same expiry mechanism as a
+manual grant). Rules are checked in order and only the first matching rule
+fires per detection event. An escalation **never** overrides a tier an admin
+already granted — if a player already has any active override, escalation
+checks are skipped for them until it expires or is removed.
 
 ### `profiling`
 
@@ -210,7 +259,13 @@ is enforced** — a mod claiming that id with a different jar is rejected
 
 For each join, in order:
 
-1. **Exemption** (Floodgate Bedrock or `bypass_players`) → **PASS**.
+1. **Exemption tier** (Floodgate Bedrock, `bypass_players`, or `player_overrides`,
+   see §5) is resolved first:
+   - `bypass` → **PASS**, no scan at all.
+   - `force_block` → **KICK**, no scan at all.
+   - any other tier (`silent`, `monitor`, `quiet_kick`, `preset:<name>`, or no
+     override) proceeds to the normal scan below; `preset:<name>` swaps in
+     that preset's category block-map for step 2 only.
 2. **Blocklist** (runs in both modes). For each reported mod, match against the
    bundled signature database (§8). If a signature matches, its category is
    enabled, and the id is not in `allow_overrides` → record a detection. Mod ids
@@ -223,7 +278,11 @@ For each join, in order:
    - `whitelist` → also require every reported mod to be in `official_mods`
      (unknown mod → kick), enforce pinned fingerprints (mismatch → kick), and if
      `require_all`, kick when an official mod is missing.
-5. **`monitor_only`** suppresses *all* kicks — detections are logged only.
+5. **`monitor_only`** suppresses *all* kicks — detections are logged only. A
+   `monitor` or `silent` tier does the same thing for just that one player,
+   regardless of the global `monitor_only` setting; `silent` additionally
+   suppresses the staff alert, and `quiet_kick` lets the kick happen normally
+   but suppresses only the staff alert.
 
 Empty `official_mods` in `whitelist` mode = **setup mode**: everyone is allowed
 (with a loud log warning) until you capture a snapshot.
@@ -329,6 +388,9 @@ pack".
 | `/fiwmods snapshot server` | Capture the **server's own** loaded mods as the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as the whitelist |
 | `/fiwmods profile <name>` | Show a player's grouped current mods, resource packs, and recent history |
+| `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant `<player>` an exemption tier (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). `[hours]` sets an expiry (omit or `0` for permanent); `[preset]` is required only when `<tier>` is `preset`. |
+| `/fiwmods exempt remove <player>` | Remove any exemption (tier override or legacy bypass-list entry) for `<player>` |
+| `/fiwmods exempt list` | List every active exemption and its tier/expiry |
 
 ---
 

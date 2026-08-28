@@ -53,6 +53,9 @@ Main features:
   enabled, disabled, removed, and fingerprint-updated history.
 - Optional resource pack bans by exact pack id/name or SHA-256 fingerprint.
 - Floodgate/Geyser Bedrock player exemption by reflection when Floodgate exists.
+- Tiered per-player exemptions (`bypass`, `silent`, `monitor`, `quiet_kick`,
+  pinned `preset`, `force_block`), with optional expiry and admin-defined
+  escalation rules that auto-apply a tier after repeated detections.
 
 This is a modpack enforcer, not a cheat-proof anti-cheat. A modified companion
 client can lie; this mod makes honest clients enforceable and makes simple jar or
@@ -92,7 +95,12 @@ memory and appear in newly generated configs or future saves.
     "banned_packs": [],
     "banned_fingerprints": []
   },
-  "exemptions": { "floodgate_auto": true, "bypass_players": [] },
+  "exemptions": {
+    "floodgate_auto": true,
+    "bypass_players": [],
+    "player_overrides": {},
+    "escalation_rules": []
+  },
   "profiling": { "enabled": true, "max_history": 200 },
   "whitelist": { "require_all": true, "official_mods": [] }
 }
@@ -110,6 +118,34 @@ Presets:
 `allow_overrides`, `banned_mods`, and `bypass_players` apply on top of presets.
 Set `monitor_only` to log detections without kicking during rollout.
 
+### Per-player exemptions
+
+`bypass_players` is still the quick, permanent full-bypass list. For anything
+more granular, grant a **tier** via `/fiwmods exempt add` (see Commands below)
+— tiers are stored in `exemptions.player_overrides` and can carry an optional
+expiry:
+
+| Tier | Scanned? | Kicked? | Staff alert? |
+|---|---|---|---|
+| `bypass` | No | Never | Never |
+| `silent` | Yes | Never | Never (console log only) |
+| `monitor` | Yes | Never | Yes |
+| `quiet_kick` | Yes | Normal | Never |
+| `preset:<strict\|balanced\|lenient\|custom>` | Yes, against the pinned preset | Normal | Normal |
+| `force_block` | No — kicked at join before any scan | Always | Never |
+
+`exemptions.escalation_rules` lets admins auto-apply a tier after repeated
+detections, e.g.:
+
+```jsonc
+"escalation_rules": [
+  { "enabled": true, "detection_count": 5, "window_hours": 4,
+    "action_tier": "force_block", "duration_hours": 4 }
+]
+```
+
+An escalation rule never overrides a tier an admin already granted.
+
 Resource pack auditing is log-only by default. `banned_packs` matches exact pack
 ids or display names, `banned_fingerprints` matches exact SHA-256 content hashes,
 and `kick_on_banned` must be set to `true` before pack matches disconnect
@@ -125,6 +161,9 @@ players.
 | `/fiwmods snapshot server` | Capture the server's loaded mods as whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as whitelist |
 | `/fiwmods profile <name>` | Show grouped mods, resource packs, and recent profile history |
+| `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant an exemption tier, optionally with an expiry (hours) and a preset name (only for the `preset` tier) |
+| `/fiwmods exempt remove <player>` | Remove any exemption for a player |
+| `/fiwmods exempt list` | List all active exemptions |
 
 ## Building And Testing
 
