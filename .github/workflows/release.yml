@@ -110,11 +110,15 @@ jobs:
           })
           pathlib.Path('/tmp/modrinth_data.json').write_text(payload)
           PYEOF
-            curl -fsS \
+            http_code=$(curl -sS -o /tmp/modrinth_response.json -w '%{http_code}' \
               -H "Authorization: $MODRINTH_TOKEN" \
               -F "data=</tmp/modrinth_data.json;type=application/json" \
               -F "file=@$file" \
-              "https://api.modrinth.com/v2/version"
+              "https://api.modrinth.com/v2/version")
+            if [[ "$http_code" -ge 400 ]]; then
+              echo "::error::Modrinth publish failed for $file ($loader $game_ver) — HTTP $http_code: $(cat /tmp/modrinth_response.json)"
+              exit 1
+            fi
             echo " -> published $file ($loader $game_ver)"
           }
           publish "release/fiw-anticheat-fabric-1.20.1-${VERSION}.jar"   "1.20.1"  "fabric"
