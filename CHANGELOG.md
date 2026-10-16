@@ -2,7 +2,7 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
-## [Unreleased]
+## [2.1.1] - Safer saves, stricter package matching, exemption list fixes
 
 ### Changed
 - Include local regression configs and server/restart command checklists for exemptions, persistence and package matching.
