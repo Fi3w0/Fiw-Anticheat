@@ -4,14 +4,19 @@ All notable changes to **Fiw AntiCheat** are listed here.
 
 ## [2.1.1] - Safer saves, stricter package matching, exemption list fixes
 
+Maintenance and bug-fix update. If something breaks or behaves differently than before, please report it on the [issue tracker](https://github.com/Fi3w0/Fiw-Anticheat/issues).
+
+> **⚠ Upgrade note:** use the same Fiw AntiCheat version on the server and on players' clients.
+
 ### Changed
-- Include local regression configs and server/restart command checklists for exemptions, persistence and package matching.
+- Config and player profiles are saved to a temporary file first and then swapped in, so a failed or interrupted save keeps the previous file. Storage that can't swap files atomically falls back to a normal replace.
 
 ### Fixed
-- Synchronize English/Spanish documentation on bundled signatures, reload behavior, preset-tier fields, collected data/storage and the intentional absence of 1.21.8 support. Existing `bypass_players` entries remain supported alongside tiers.
-- Package/entrypoint prefixes match only an exact name or a descendant separated by a dot, preventing unrelated longer names from matching. Matching stays case-insensitive across server locales.
-- Save `config/fiw-mods-api/config.json` and player profiles through atomic file replacement, keeping the previous file intact if writing fails. Filesystems must support atomic moves.
-- `/fiwmods exempt list` hides expired grants immediately and labels expiry times as UTC on every loader. The active count includes only unexpired/permanent grants and legacy bypass entries.
+- Bundled signature package rules no longer match unrelated longer names (a rule for `com.foo` matched `com.foobar`); they match the exact package or a sub-package, case-insensitively on every server locale.
+- `/fiwmods exempt list` hides expired grants right away, labels expiry times as UTC on every loader, and its active count only includes unexpired, permanent and legacy bypass entries.
+
+### Documentation
+- English and Spanish guides now match: bundled signatures, what `/fiwmods reload` re-reads, preset-tier fields, which data is collected and stored, and why there is no 1.21.8 build. Existing `bypass_players` entries keep working alongside tiers.
 
 ## [2.1.0] - Tiered per-player exemptions
 

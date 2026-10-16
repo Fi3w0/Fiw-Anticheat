@@ -36,9 +36,9 @@ Fiw AntiCheat is an admin enforcement tool and mod verification layer. It is not
 
 NeoForge does not publish a real Minecraft 1.20.1 artifact on the current NeoForge Maven, so the 1.20.1 Forge-family build targets MinecraftForge 47.x.
 
----
+There is no Minecraft 1.21.8 build. Use the same Fiw AntiCheat version on the server and on players' clients.
 
-Minecraft **1.21.8 is intentionally unsupported in this update**; there is no module or jar for it. Use the same Fiw AntiCheat release on the server and companions; cross-release compatibility is not guaranteed.
+---
 
 ## Features
 
@@ -133,6 +133,12 @@ Install Fiw AntiCheat on the server and on player clients. The client companion 
 
 ---
 
+## What data is collected
+
+The server receives each player's mod ids, versions, SHA-256 hashes and package markers, plus their active **and inactive** resource packs (id, name, hash, status). Profiles in `config/fiw-mods-api/profiles/` keep the player's name and UUID, visits, mod ids and versions, packs, and change/detection history; mod hashes and package markers are not stored in profiles. Whitelist snapshots store mod hashes in `config.json`, and logs can contain detections and changes. Profiles have no automatic expiry. Profiling and pack auditing can be turned off in the config.
+
+---
+
 ## Documentation
 
 Full English documentation ships with the mod in `DOCS_EN.md`: the join
@@ -158,11 +164,3 @@ Contact  me: @Fi3w0 on Github/Discord
 ---
 
 *Made by Fi3w0 — built for a private SMP, shared with everyone.*
-
-## Data and configuration notes
-
-Current detection uses reported mod ids and package markers; mixin/entrypoint lists are empty. Package rules match exact names or dot-separated descendants. The bundled signatures require a rebuilt jar to change; admins can edit `detection.banned_mods`, overrides and presets in `config/fiw-mods-api/config.json`. A config-side `signatures.json` is not loaded.
-
-The server receives mod ids/versions/hashes/package markers and active **and inactive** pack ids/names/hashes/status. Profiles under `config/fiw-mods-api/profiles/` save player identity, visits, mod ids/versions, packs and change/detection history; mod hashes/markers are not stored in profiles. Whitelist snapshots store mod hashes in `config.json`; logs can contain detections and changes. Profiles have no automatic file expiry. Config and profiles use atomic replacement, preserving the prior file if saving fails.
-
-Exemption lists hide expired grants and label expiry times as UTC. For a pinned preset use `"tier": "preset", "preset": "strict"`, or `/fiwmods exempt add Steve preset 0 strict`.

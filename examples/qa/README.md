@@ -1,8 +1,6 @@
-# 2.1.1 regression pack
+# QA pack
 
-This is for a disposable dedicated server, never the live server's config. There is no 1.21.8 AntiCheat jar; use its six supported targets. The user's two-instance player pass is for Bosses/Custom Items; this document does not ask for another manual AntiCheat pass yet.
-
-Status on 2026-10-16 after access was enabled: full Gradle build and all 45 core tests passed. All six dedicated servers passed the command/config checks over three clean boot/stop cycles each. No real companion handshake/join result has been established; core-engine simulations remain separate below.
+One test pack for the current version, updated in place each release. Use a disposable dedicated server, never a live server's config. There is no 1.21.8 build; use one of the six supported targets.
 
 ## Build and seed config
 
@@ -12,7 +10,7 @@ From this repository, run Gradle on Java 21 (not 25):
 JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home ./gradlew build --stacktrace
 ```
 
-After building, install the matching 2.1.1 production jar on the test server and matching companion clients. Fabric also needs Fabric API. Copy only this folder's `config.json` to `config/fiw-mods-api/config.json`, backing up any previous file. The `reported-*.json` files are synthetic input for direct core validation, **not** files loaded by the Minecraft companion or server config loader.
+After building, install the matching production jar on the test server and matching companion clients. Fabric also needs Fabric API. Copy only this folder's `config.json` to `config/fiw-mods-api/config.json`, backing up any previous file. The `reported-*.json` files are synthetic input for direct core validation, **not** files loaded by the Minecraft companion or server config loader.
 
 Expected `/fiwmods exempt list` before any command changes:
 
@@ -52,20 +50,3 @@ The synthetic `reported-mod-cases.json` exercises real bundled package signature
 ## Direct core checks
 
 The 45 existing JUnit tests pass. Production-core validation of this pack separately checks its active/expired list, atomic grant/remove persistence through engine recreation, six report cases against the bundled signatures, and active/inactive pack history through profile reload. These checks are not Minecraft server tests.
-
-## Dedicated-server results (2026-10-16)
-
-`./gradlew build --stacktrace` on Java 21 passed all six targets and 45 core tests. Each target reached `Done` three times and stopped cleanly with exit 0. The same command sequence verified three seeded active grants/UTC/no expired row, four after adding `qa_added`, unchanged expiry through restart, removal surviving another restart, valid permanent preset grant/removal, invalid tier/preset refusal, read-only listing and no orphan temp files after actual config saves.
-
-| Target | Build | Command/config/restarts |
-|---|---|---|
-| Fabric 1.21.11 | Pass | Pass |
-| NeoForge 1.21.11 | Pass | Pass |
-| Fabric 1.21.1 | Pass | Pass |
-| NeoForge 1.21.1 | Pass | Pass |
-| Fabric 1.20.1 | Pass | Pass |
-| Forge 1.20.1 | Pass | Pass |
-
-Tests use dedicated loopback servers in isolated disposable `qa_world` directories. A temporary external Gradle init script selects the appropriate run directory and forwards console input; no CI/build-tooling changes were committed. Logs/results: `/private/tmp/fiw-live-20261016/anticheat-results.json` and matching `anticheat-*.log`. These supersede the earlier sandbox-blocked attempts.
-
-No connected client was used: companion transport, actual loader marker collection, freeze/unfreeze, kicks and live profile reporting remain unverified. Synthetic report cases and profile persistence are core checks, not transport tests. The two-instance manual player pass remains for Bosses/Custom Items only. No push/tag/release.
