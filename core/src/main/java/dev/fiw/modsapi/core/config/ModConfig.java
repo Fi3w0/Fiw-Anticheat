@@ -2,10 +2,10 @@ package dev.fiw.modsapi.core.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.fiw.modsapi.core.io.AtomicFiles;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -155,9 +155,7 @@ public final class ModConfig {
     public void save(Path configDir) throws IOException {
         Files.createDirectories(configDir);
         Path file = configDir.resolve("config.json");
-        try (Writer w = Files.newBufferedWriter(file)) {
-            GSON.toJson(this, w);
-        }
+        AtomicFiles.write(file, writer -> GSON.toJson(this, writer));
     }
 
     /** Fill in any nested objects a hand-edited / older config may be missing. */

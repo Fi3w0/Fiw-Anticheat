@@ -5,6 +5,7 @@ All notable changes to **Fiw AntiCheat** are listed here.
 ## [Unreleased]
 
 ### Fixed
+- Save `config/fiw-mods-api/config.json` and player profiles through atomic file replacement, keeping the previous file intact if writing fails. Filesystems must support atomic moves.
 - `/fiwmods exempt list` hides expired grants immediately and labels expiry times as UTC on every loader. The active count includes only unexpired/permanent grants and legacy bypass entries.
 
 ## [2.1.0] - Tiered per-player exemptions

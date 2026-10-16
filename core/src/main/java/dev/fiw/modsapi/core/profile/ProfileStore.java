@@ -2,12 +2,12 @@ package dev.fiw.modsapi.core.profile;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.fiw.modsapi.core.io.AtomicFiles;
 import dev.fiw.modsapi.core.model.ModEntry;
 import dev.fiw.modsapi.core.model.ResourcePackEntry;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -271,9 +271,7 @@ public final class ProfileStore {
     private void save(UUID uuid, PlayerProfile profile) throws IOException {
         Files.createDirectories(profilesDir);
         Path file = profilesDir.resolve(uuid + ".json");
-        try (Writer w = Files.newBufferedWriter(file)) {
-            GSON.toJson(profile, w);
-        }
+        AtomicFiles.write(file, writer -> GSON.toJson(profile, writer));
     }
 
     private static void ensureLists(PlayerProfile profile) {
