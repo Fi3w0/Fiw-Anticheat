@@ -2,6 +2,11 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
+## [Unreleased]
+
+### Fixed
+- `/fiwmods exempt list` hides expired grants immediately and labels expiry times as UTC on every loader. The active count includes only unexpired/permanent grants and legacy bypass entries.
+
 ## [2.1.0] - Tiered per-player exemptions
 
 ### Added
