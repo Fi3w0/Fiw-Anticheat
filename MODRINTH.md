@@ -38,11 +38,13 @@ NeoForge does not publish a real Minecraft 1.20.1 artifact on the current NeoFor
 
 ---
 
+Minecraft **1.21.8 is intentionally unsupported in this update**; there is no module or jar for it. Use the same Fiw AntiCheat release on the server and companions; cross-release compatibility is not guaranteed.
+
 ## Features
 
 - **Blacklist mode** - allow normal mods while blocking selected unfair categories
 - **Whitelist mode** - enforce a captured official modpack list
-- **Built-in signature database** - detects known unfair mods by id and stable markers such as packages or mixin configs
+- **Built-in signature database** - detects known unfair mods by id and stable package markers
 - **Admin profiles** - view each player's current mods, platform/loader entries, and recent changes
 - **Resource pack auditing** - log active and inactive packs, plus added/enabled/disabled/removed history
 - **Optional resource pack bans** - flag by exact pack id/name or SHA-256 fingerprint, with kicks disabled by default
@@ -54,7 +56,7 @@ NeoForge does not publish a real Minecraft 1.20.1 artifact on the current NeoFor
   pinned `preset`, or `force_block` per player, with optional expiry and
   admin-defined auto-escalation rules after repeated detections
 - **Floodgate/Geyser support** - optional Bedrock-player exemption when Floodgate is present
-- **Hot reload** - reload config and signatures without restarting
+- **Hot reload** - re-read `config/fiw-mods-api/config.json` and bundled signatures from the installed jar; external signature files are not loaded
 - **Server snapshots** - capture the server or an online player as the official whitelist baseline
 
 ---
@@ -156,3 +158,11 @@ Contact  me: @Fi3w0 on Github/Discord
 ---
 
 *Made by Fi3w0 — built for a private SMP, shared with everyone.*
+
+## Data and configuration notes
+
+Current detection uses reported mod ids and package markers; mixin/entrypoint lists are empty. Package rules match exact names or dot-separated descendants. The bundled signatures require a rebuilt jar to change; admins can edit `detection.banned_mods`, overrides and presets in `config/fiw-mods-api/config.json`. A config-side `signatures.json` is not loaded.
+
+The server receives mod ids/versions/hashes/package markers and active **and inactive** pack ids/names/hashes/status. Profiles under `config/fiw-mods-api/profiles/` save player identity, visits, mod ids/versions, packs and change/detection history; mod hashes/markers are not stored in profiles. Whitelist snapshots store mod hashes in `config.json`; logs can contain detections and changes. Profiles have no automatic file expiry. Config and profiles use atomic replacement, preserving the prior file if saving fails.
+
+Exemption lists hide expired grants and label expiry times as UTC. For a pinned preset use `"tier": "preset", "preset": "strict"`, or `/fiwmods exempt add Steve preset 0 strict`.

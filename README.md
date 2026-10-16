@@ -33,6 +33,10 @@ NeoForge does not publish a real Minecraft 1.20.1 artifact on the current
 NeoForge Maven. The Forge-family 1.20.1 target is therefore built against
 MinecraftForge 47.x.
 
+Minecraft **1.21.8 is intentionally unsupported in this update**; there is no module or jar for it.
+
+Use the same Fiw AntiCheat release on server and companion clients. Cross-release compatibility is not guaranteed.
+
 ## What It Does
 
 On player join, the server sends a nonce challenge. A client with the companion
@@ -46,7 +50,7 @@ Main features:
 - `blacklist` mode, the default: players may run anything except blocked mods.
 - `whitelist` mode: only the captured official modpack set is allowed.
 - Bundled signature database for known unfair mods, matched by mod id and stable
-  markers such as packages and mixin configs.
+  package markers. Shipped companions do not collect mixin configs or entrypoints yet.
 - Per-player profile history showing current mods and changes over time. Profile
   output separates real/player-installed mods from noisy loader/API entries.
 - Resource pack auditing for active and inactive packs, including added,
@@ -131,7 +135,7 @@ expiry:
 | `silent` | Yes | Never | Never (console log only) |
 | `monitor` | Yes | Never | Yes |
 | `quiet_kick` | Yes | Normal | Never |
-| `preset:<strict\|balanced\|lenient\|custom>` | Yes, against the pinned preset | Normal | Normal |
+| `preset` | Yes, against the pinned preset | Normal | Normal |
 | `force_block` | No — kicked at join before any scan | Always | Never |
 
 `exemptions.escalation_rules` lets admins auto-apply a tier after repeated
@@ -144,7 +148,7 @@ detections, e.g.:
 ]
 ```
 
-An escalation rule never overrides a tier an admin already granted.
+An escalation rule never overrides a tier an admin already granted. Use separate config fields for pinned presets: `"tier": "preset", "preset": "strict"`. The equivalent permanent command is `/fiwmods exempt add Steve preset 0 strict`. `/fiwmods exempt list` hides expired grants immediately and labels expiry times as UTC.
 
 Resource pack auditing is log-only by default. `banned_packs` matches exact pack
 ids or display names, `banned_fingerprints` matches exact SHA-256 content hashes,
@@ -157,7 +161,7 @@ players.
 
 | Command | Description |
 |---|---|
-| `/fiwmods reload` | Reload config and bundled signatures |
+| `/fiwmods reload` | Re-read `config/fiw-mods-api/config.json` and signatures from the installed jar; no external signatures file is read |
 | `/fiwmods snapshot server` | Capture the server's loaded mods as whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as whitelist |
 | `/fiwmods profile <name>` | Show grouped mods, resource packs, and recent profile history |
@@ -206,7 +210,11 @@ fabric-1.21.11/   Fabric 1.21.11 adapter, CustomPayload networking
 neoforge-1.21.11/ NeoForge 1.21.11 adapter
 ```
 
-The bundled signature list is `core/src/main/resources/signatures.json`.
+The bundled signature list lives inside the jar. Developers edit `core/src/main/resources/signatures.json` and rebuild; admins use `detection.banned_mods`, `allow_overrides` and presets in `config/fiw-mods-api/config.json`. An admin file at `config/fiw-mods-api/signatures.json` is not loaded. Current companions supply ids and packages, with exact/dot-boundary package matching; mixin/entrypoint lists are empty. See both language guides for collection limits.
+
+## What data is collected
+
+The server receives mod ids/versions/SHA-256 hashes/package markers and active **and inactive** resource pack ids/names/hashes/status. Profiles in `config/fiw-mods-api/profiles/<uuid>.json` persist UUID/name, visits, mod ids/versions, packs and change/detection history. Mod hashes and package markers are not saved in profiles; whitelist snapshots save mod hashes in `config.json`. Logs can contain detections and changes. Profiling and pack auditing are configurable; detection timestamps can still be saved for escalation, and profiles have no automatic file expiry. Both full guides explain storage and controls. Config and profiles use atomic replacement; unsupported atomic moves fail without overwriting the prior file.
 
 ## License
 

@@ -5,6 +5,7 @@ All notable changes to **Fiw AntiCheat** are listed here.
 ## [Unreleased]
 
 ### Fixed
+- Synchronize English/Spanish documentation on bundled signatures, reload behavior, preset-tier fields, collected data/storage and the intentional absence of 1.21.8 support. Existing `bypass_players` entries remain supported alongside tiers.
 - Package/entrypoint prefixes match only an exact name or a descendant separated by a dot, preventing unrelated longer names from matching. Matching stays case-insensitive across server locales.
 - Save `config/fiw-mods-api/config.json` and player profiles through atomic file replacement, keeping the previous file intact if writing fails. Filesystems must support atomic moves.
 - `/fiwmods exempt list` hides expired grants immediately and labels expiry times as UTC on every loader. The active count includes only unexpired/permanent grants and legacy bypass entries.

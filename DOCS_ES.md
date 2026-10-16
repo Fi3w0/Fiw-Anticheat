@@ -35,6 +35,8 @@ el **unico jar** que corresponde al loader y la version de Minecraft del servido
 | 1.21.11 | Fabric | 21 | `fiw-anticheat-fabric-1.21.11-<version>.jar` |
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-<version>.jar` |
 
+Minecraft **1.21.8 no esta soportado intencionadamente en esta actualizacion**: no existe modulo ni jar para 1.21.8. Que FIW Bosses o Fiw Custom Items lo soporten no implica soporte en AntiCheat.
+
 NeoForge no publica una build de Minecraft **1.20.1** en su Maven actual (la mas
 antigua es 1.20.2), asi que el target 1.20.1 de la familia Forge usa
 **MinecraftForge 47.x**.
@@ -42,6 +44,8 @@ antigua es 1.20.2), asi que el target 1.20.1 de la familia Forge usa
 ---
 
 ## 2. Requisitos
+
+Usa la misma version de Fiw AntiCheat en el servidor y en todos los clientes companeros, con el jar correspondiente al loader y Minecraft de cada lado. La compatibilidad entre versiones distintas no esta garantizada; esta actualizacion no cambia el protocolo.
 
 - Cada jugador de **Java** debe tener el jar companero correspondiente (incluyelo
   dentro de tu modpack/launcher para que no lo instalen a mano).
@@ -66,9 +70,7 @@ Todo el trabajo ocurre **una vez por entrada**, nunca por tick.
    - `id` - id del mod en el loader
    - `version` - cadena de version de los metadatos del mod
    - `fingerprint` - **SHA-256 del archivo jar del mod**
-   - `markers` - senales de identidad estables: paquetes raiz + nombres de
-     configs de mixin declarados (sobreviven a renombrar el jar *y* a renombrar el
-     id interno del mod)
+   - `markers` - nombres de paquetes reportados. Los adaptadores actuales dejan vacias las listas de configs de mixin y entrypoints (ver seccion 8).
    Tambien reporta resource packs:
    - `id` - id del pack, normalmente `file/<archivo>` para packs locales
    - `name` - nombre/archivo legible para el staff
@@ -206,7 +208,7 @@ niveles, cada entrada con esta forma:
 ```jsonc
 "player_overrides": {
   "steve": { "tier": "silent", "expires_at": null, "reason": "tester de confianza" },
-  "griefer123": { "tier": "preset", "preset": "strict", "expires_at": 1735689600000 }
+  "griefer123": { "tier": "preset", "preset": "strict", "expires_at": null }
 }
 ```
 
@@ -216,12 +218,14 @@ niveles, cada entrada con esta forma:
 | `silent` | Si | Nunca | Nunca | El log de consola y el historial de perfil se siguen registrando, en silencio - sin expulsion, sin aviso a staff. |
 | `monitor` | Si | Nunca | Si | Version por jugador del `monitor_only` global. |
 | `quiet_kick` | Si | Normal (decide la deteccion real) | Nunca | Las expulsiones ocurren igual que sin override; solo se suprime la alerta de staff. |
-| `preset:<nombre>` | Si, contra `<nombre>` en vez de `detection.preset` | Normal | Normal | `<nombre>` es `strict`, `balanced`, `lenient` o `custom` (custom reutiliza el `detection.block` del propio servidor). |
+| `preset` | Si, contra el campo separado `preset` en vez de `detection.preset` | Normal | Normal | Ejemplo: `"tier": "preset", "preset": "strict"`. Opciones: `strict`, `balanced`, `lenient`, `custom`; custom usa el mapa `detection.block` del servidor. |
 | `force_block` | No - expulsado al entrar, antes del desafio | Siempre | Nunca | Lista de bloqueo manual por jugador para reincidentes; salta el escaneo por completo. |
 
 `expires_at` es un timestamp en milisegundos epoch; `null`/ausente significa
 permanente. Un permiso vencido se purga automaticamente la proxima vez que se
-evalua a ese jugador - no hace falta reiniciar ni recargar.
+evalua a ese jugador - no hace falta reiniciar ni recargar. `/fiwmods exempt list` oculta los permisos vencidos inmediatamente, aunque el jugador no haya entrado; muestra las expiraciones en UTC.
+
+Usa campos separados: `"tier": "preset", "preset": "strict"`. El comando permanente equivalente es `/fiwmods exempt add Steve preset 0 strict` (las horas van antes del nombre del preset).
 
 #### Reglas de escalado
 
@@ -269,8 +273,8 @@ Por cada entrada, en orden:
    `player_overrides`, ver seccion 5) se resuelve primero:
    - `bypass` -> **PASS**, sin escaneo.
    - `force_block` -> **KICK**, sin escaneo.
-   - cualquier otro nivel (`silent`, `monitor`, `quiet_kick`, `preset:<nombre>`,
-     o sin override) continua al escaneo normal de abajo; `preset:<nombre>`
+   - cualquier otro nivel (`silent`, `monitor`, `quiet_kick`, `preset`,
+     o sin override) continua al escaneo normal de abajo; `preset`
      sustituye el mapa de bloqueo por categoria de ese preset solo para el
      paso 2.
 2. **Blocklist** (corre en ambos modos). Por cada mod reportado, se compara con la
@@ -316,9 +320,11 @@ Ideal para un servidor de modpack cerrado o un launcher controlado. Flujo:
 
 ## 8. Base de firmas (mods conocidos no permitidos)
 
-La blocklist es un archivo de datos incluido:
-`core/src/main/resources/signatures.json`. Cada entrada es solo datos: agrega
-mods o categorias sin tocar codigo:
+La blocklist incluida vive dentro del jar del mod. Los desarrolladores editan `core/src/main/resources/signatures.json` y recompilan el jar para cambiarla; no es un archivo de configuracion del servidor.
+
+Actualmente **no existe un cargador de firmas del lado administrador**: poner un archivo en `config/fiw-mods-api/signatures.json` no tiene efecto. Los administradores pueden usar `detection.banned_mods`, `allow_overrides`, presets y categorias en `config/fiw-mods-api/config.json`, y ejecutar `/fiwmods reload`.
+
+Formato de una firma incluida (para desarrolladores):
 
 ```jsonc
 { "name": "Some Cheat", "category": "cheat_clients",
@@ -326,11 +332,14 @@ mods o categorias sin tocar codigo:
              "mixins": ["somecheat.mixins.json"] } }
 ```
 
-Una firma coincide si **cualquiera** de las reglas acierta:
-- `ids` - id exacto del mod (sobrevive a renombrar el archivo jar; el id vive en
-  los metadatos),
-- `packages` - prefijo de paquete raiz (sobrevive a renombrar el id interno),
-- `mixins` - nombre del archivo de config de mixin declarado.
+Con los adaptadores incluidos, las firmas comparan:
+
+- `ids` - id exacto del mod, sin distinguir mayusculas; renombrar el jar no cambia el id.
+- `packages` - paquete exacto o descendiente separado por un punto, sin distinguir mayusculas. `com.example.cheat` coincide consigo mismo y con `com.example.cheat.client`, pero no con `com.example.cheater`.
+
+El formato y el motor tambien aceptan `mixins` (nombre exacto de config) y `entrypoints` (prefijos con limite de punto), pero los seis adaptadores actuales envian ambas listas vacias. Esas reglas no tienen efecto con el companero actual. Los nombres de archivos jar no se envian y no pueden coincidir con firmas.
+
+La recopilacion es de mejor esfuerzo y limitada: Fabric solo visita paquetes con clases hasta tres segmentos y usa un limite pequeno; Forge/NeoForge escanean paquetes de clases con un maximo de 64 marcadores por mod. Los paquetes profundos u omitidos pueden no aparecer. El cliente controla todos los reportes.
 
 La coincidencia **nunca** es por version ni hash, asi que sobrevive a
 actualizaciones de mods. Categorias:
@@ -389,19 +398,29 @@ de x-ray".
 
 ---
 
+### Privacidad — que datos se recopilan
+
+El companero envia al servidor ids de mods, versiones, huellas SHA-256 de jars y marcadores de paquetes para verificar. Tambien envia ids/nombres de resource packs, huellas SHA-256 del contenido cuando estan disponibles y su estado activo/inactivo, incluidos los packs instalados pero desactivados. Envia metadatos y hashes, no el contenido de los jars o packs. Las listas de mixins y entrypoints estan vacias actualmente (seccion 8).
+
+Con perfiles habilitados, `config/fiw-mods-api/profiles/<uuid>.json` guarda UUID/nombre, primera/ultima visita, numero de entradas, ids/versiones de mods, nombres/ids/hashes de packs activos e inactivos, historial de cambios y fechas de detecciones recientes para el escalado. Los hashes de jars y marcadores de paquetes se usan al evaluar; el formato actual de perfil no los guarda. `/fiwmods snapshot` guarda ids/versiones/hashes de mods oficiales en `config/fiw-mods-api/config.json`. Los mensajes de deteccion y cambios tambien aparecen en los logs del servidor y las alertas opcionales al staff.
+
+`profiling.enabled: false` desactiva el registro ordinario de perfiles de mods/packs; las reglas de escalado todavia pueden guardar fechas de detecciones. `resource_packs.log: false` desactiva el registro de packs y su evaluacion de bans, pero no impide que el companero reporte sus metadatos. `max_history` limita los eventos (200 por defecto); no existe caducidad automatica de archivos de perfil. Restringe el acceso a perfiles, config, logs y copias de seguridad. Se guardan con reemplazo atomico; si el sistema de archivos no admite movimientos atomicos, el guardado falla y conserva el archivo anterior.
+
+---
+
 ## 10. Comandos
 
 `/fiwmods` - requiere permiso de operador nivel 4.
 
 | Comando | Descripcion |
 |---|---|
-| `/fiwmods reload` | Recarga config + firmas incluidas desde disco |
+| `/fiwmods reload` | Relee `config/fiw-mods-api/config.json` y las firmas incluidas en el jar instalado; no lee un archivo externo de firmas |
 | `/fiwmods snapshot server` | Captura los mods del **propio servidor** como whitelist |
 | `/fiwmods snapshot player <nombre>` | Captura los mods reportados por un jugador conectado como whitelist |
 | `/fiwmods profile <nombre>` | Muestra mods, resource packs e historial reciente |
 | `/fiwmods exempt add <jugador> <nivel> [horas] [preset]` | Otorga un nivel de exencion (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). `[horas]` fija una expiracion (omite o usa `0` para permanente); `[preset]` solo es necesario cuando `<nivel>` es `preset`. |
 | `/fiwmods exempt remove <jugador>` | Elimina cualquier exencion (override o entrada heredada de bypass) para `<jugador>` |
-| `/fiwmods exempt list` | Lista todas las exenciones activas y su nivel/expiracion |
+| `/fiwmods exempt list` | Lista permisos vigentes/permanentes y bypass heredados; las expiraciones se muestran en UTC |
 
 ---
 

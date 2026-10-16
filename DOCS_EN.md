@@ -25,6 +25,8 @@ server evaluates that report and either lets the player in or disconnects them.
 The mod is one shared engine plus a thin adapter per loader/version. Pick the
 **one jar** that matches your server's loader and Minecraft version.
 
+Minecraft **1.21.8 is intentionally unsupported in this update**: there is no 1.21.8 module or jar. Its support in FIW Bosses or Fiw Custom Items does not imply AntiCheat support.
+
 | Minecraft | Loader | Java | Jar |
 |---|---|---:|---|
 | 1.20.1 | Fabric | 17 | `fiw-anticheat-fabric-1.20.1-<version>.jar` |
@@ -41,6 +43,8 @@ NeoForge does not publish a Minecraft **1.20.1** build on its current Maven
 ---
 
 ## 2. Requirements
+
+Use the same Fiw AntiCheat release on the server and every companion client, with a jar matching each side’s loader and Minecraft version. Cross-release companion/server compatibility is not guaranteed; this update does not change the protocol.
 
 - Every **Java** player must have the matching companion jar (ship it inside your
   modpack / launcher so players don't install it manually).
@@ -65,8 +69,7 @@ All work happens **once per join**, never per tick.
    - `id` — loader mod id
    - `version` — version string from mod metadata
    - `fingerprint` — **SHA-256 of the mod's jar file**
-   - `markers` — stable identity signals: root packages + declared mixin config
-     names (these survive a jar rename *and* an internal mod-id rename)
+   - `markers` — reported package names. The shipped adapters currently leave mixin-config and entrypoint lists empty (see §8).
    It also reports resource packs:
    - `id` — pack id, usually `file/<filename>` for local packs
    - `name` — readable pack name/filename for staff output
@@ -201,7 +204,7 @@ tiers, each entry shaped like:
 ```jsonc
 "player_overrides": {
   "steve": { "tier": "silent", "expires_at": null, "reason": "trusted tester" },
-  "griefer123": { "tier": "preset", "preset": "strict", "expires_at": 1735689600000 }
+  "griefer123": { "tier": "preset", "preset": "strict", "expires_at": null }
 }
 ```
 
@@ -211,12 +214,14 @@ tiers, each entry shaped like:
 | `silent` | Yes | Never | Never | Console log line + profile history still recorded, just quietly — no kick, no staff ping. |
 | `monitor` | Yes | Never | Yes | Per-player version of global `monitor_only`. |
 | `quiet_kick` | Yes | Normal (real detection decides) | Never | Kicks happen exactly as they would with no override; only the staff chat alert is suppressed. |
-| `preset:<name>` | Yes, against `<name>` instead of `detection.preset` | Normal | Normal | `<name>` is `strict`, `balanced`, `lenient`, or `custom` (custom reuses the server's own `detection.block` map). |
+| `preset` | Yes, against the separate `preset` field instead of `detection.preset` | Normal | Normal | Example: `"tier": "preset", "preset": "strict"`. Choices: `strict`, `balanced`, `lenient`, `custom`; custom uses the server’s `detection.block` map. |
 | `force_block` | No — kicked at join before any challenge | Always | Never | Manual per-player deny-list for repeat offenders; bypasses the scan entirely. |
 
 `expires_at` is an epoch-millis timestamp; `null`/absent means permanent. An
 expired grant is purged automatically the next time that player is evaluated —
-no restart or reload needed.
+no restart or reload needed. `/fiwmods exempt list` hides expired grants immediately, even before a player joins; displayed expiry times are UTC.
+
+Use separate tier/preset fields: `"tier": "preset", "preset": "strict"`. The equivalent permanent command is `/fiwmods exempt add Steve preset 0 strict` (the hours argument precedes the preset name).
 
 #### Escalation rules
 
@@ -263,8 +268,8 @@ For each join, in order:
    see §5) is resolved first:
    - `bypass` → **PASS**, no scan at all.
    - `force_block` → **KICK**, no scan at all.
-   - any other tier (`silent`, `monitor`, `quiet_kick`, `preset:<name>`, or no
-     override) proceeds to the normal scan below; `preset:<name>` swaps in
+   - any other tier (`silent`, `monitor`, `quiet_kick`, `preset`, or no
+     override) proceeds to the normal scan below; `preset` swaps in
      that preset's category block-map for step 2 only.
 2. **Blocklist** (runs in both modes). For each reported mod, match against the
    bundled signature database (§8). If a signature matches, its category is
@@ -308,8 +313,11 @@ kicked. Best for a locked modpack server or a controlled launcher. Workflow:
 
 ## 8. Signature database (known-bad mods)
 
-The blocklist is a bundled data file: `core/src/main/resources/signatures.json`.
-Each entry is pure data — add mods or categories without touching code:
+The bundled blocklist lives inside the mod jar. Developers edit `core/src/main/resources/signatures.json` and rebuild the jar to change it; this is not a server config file.
+
+There is currently **no admin-side signatures file loader**: placing a file at `config/fiw-mods-api/signatures.json` has no effect. Admins can use `detection.banned_mods`, `allow_overrides`, presets and category settings in `config/fiw-mods-api/config.json`, then run `/fiwmods reload`.
+
+Bundled entry format (for developers):
 
 ```jsonc
 { "name": "Some Cheat", "category": "cheat_clients",
@@ -317,10 +325,14 @@ Each entry is pure data — add mods or categories without touching code:
              "mixins": ["somecheat.mixins.json"] } }
 ```
 
-A signature matches if **any** rule hits:
-- `ids` — exact mod id (survives a jar-file rename; id lives in metadata),
-- `packages` — root package prefix (survives an internal mod-id rename),
-- `mixins` — declared mixin config file name.
+With the shipped adapters, signatures match by:
+
+- `ids` — exact mod id, case-insensitive; renaming the jar does not change the id.
+- `packages` — case-insensitive exact package or descendant at a dot boundary. `com.example.cheat` matches itself and `com.example.cheat.client`, but not `com.example.cheater`.
+
+The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all six shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
+
+Package collection is best effort and bounded: Fabric only visits packages containing classes at up to three segments and uses a small collection cap; Forge/NeoForge scan class packages with a cap of 64 markers per mod. Deeply nested or omitted packages may not be reported. All reports remain client-controlled.
 
 Matching is **never** by version or hash, so it survives mod updates. Categories:
 
@@ -378,19 +390,29 @@ pack".
 
 ---
 
+### Privacy — what data is collected
+
+The companion sends mod ids, versions, SHA-256 jar fingerprints and package markers to the server for verification. It also sends resource pack ids/names, SHA-256 content fingerprints when available, and active/inactive status — including installed packs that are not enabled. It sends metadata and hashes, not jar or pack contents. Mixin-config and entrypoint marker lists are currently empty (§8).
+
+With profiling enabled, `config/fiw-mods-api/profiles/<uuid>.json` stores the player UUID/name, first/last-seen timestamps, join count, mod ids/versions, active and inactive pack names/ids/hashes, change history and recent detection timestamps used for escalation. Mod jar hashes and package markers are used during evaluation; the current profile format does not store them. A `/fiwmods snapshot` stores official mod ids/versions/hashes in `config/fiw-mods-api/config.json`. Detection and profile-change messages also appear in server logs and optional staff alerts.
+
+`profiling.enabled: false` disables ordinary mod/pack profile recording; escalation rules can still write detection timestamps. `resource_packs.log: false` disables pack profile recording and pack-ban evaluation, but does not stop the companion from reporting pack metadata. `max_history` caps change events (default 200); there is no automatic profile-file expiry. Restrict access to profiles, config, logs and backups. These files are saved by atomic replacement; if the filesystem does not support atomic moves, saving fails and keeps the prior file.
+
+---
+
 ## 10. Commands
 
 `/fiwmods` — requires OP permission level 4.
 
 | Command | Description |
 |---|---|
-| `/fiwmods reload` | Reload config + bundled signatures from disk |
+| `/fiwmods reload` | Re-read `config/fiw-mods-api/config.json` and reload bundled signatures from the installed jar; no external signatures file is read |
 | `/fiwmods snapshot server` | Capture the **server's own** loaded mods as the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as the whitelist |
 | `/fiwmods profile <name>` | Show a player's grouped current mods, resource packs, and recent history |
 | `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant `<player>` an exemption tier (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). `[hours]` sets an expiry (omit or `0` for permanent); `[preset]` is required only when `<tier>` is `preset`. |
 | `/fiwmods exempt remove <player>` | Remove any exemption (tier override or legacy bypass-list entry) for `<player>` |
-| `/fiwmods exempt list` | List every active exemption and its tier/expiry |
+| `/fiwmods exempt list` | List unexpired/permanent grants and legacy bypass entries; expiry times are UTC |
 
 ---
 
