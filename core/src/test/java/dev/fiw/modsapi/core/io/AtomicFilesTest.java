@@ -27,6 +27,19 @@ class AtomicFilesTest {
     }
 
     @Test
+    void savesWhenStorageCannotMoveAtomically(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("config.json");
+        Files.writeString(file, "old");
+        AtomicFiles.write(file, writer -> writer.write("new"), (from, to) -> {
+            throw new java.nio.file.AtomicMoveNotSupportedException(from.toString(), to.toString(), "test");
+        });
+        assertEquals("new", Files.readString(file));
+        try (var files = Files.list(dir)) {
+            assertEquals(1, files.count());
+        }
+    }
+
+    @Test
     void savingAgainKeepsGrantsAndReplacesTheCompleteConfig(@TempDir Path dir) throws IOException {
         ModConfig config = ModConfig.load(dir);
         config.exemptions.player_overrides.put("steve", new ModConfig.PlayerOverride("preset", "strict", 1000L, "test"));
