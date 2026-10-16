@@ -1,6 +1,11 @@
 package dev.fiw.modsapi.core;
 
 import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.model.ModMarkers;
+import dev.fiw.modsapi.core.signature.Signature;
+
+import java.util.List;
+import java.util.Locale;
 import dev.fiw.modsapi.core.signature.SignatureDatabase;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +37,49 @@ class SignatureDatabaseTest {
         assertCategory(db, "easy-freecam", "freecam");
         assertCategory(db, "click-crystals", "autoclicker");
         assertCategory(db, "schematic-printer", "schematic_printer");
+    }
+
+    @Test
+    void packagePrefixMatchesOnlyAnExactPackageOrDescendant() {
+        Signature signature = new Signature();
+        signature.match.packages = List.of("com.example.cheat");
+        assertTrue(signature.matches(withMarkers("com.example.cheat", null)));
+        assertTrue(signature.matches(withMarkers("com.example.cheat.client", null)));
+        assertTrue(signature.matches(withMarkers("COM.EXAMPLE.CHEAT.Client", null)));
+        assertFalse(signature.matches(withMarkers("com.example.cheater", null)));
+        assertFalse(signature.matches(withMarkers("com.example.cheat_tools", null)));
+        assertFalse(signature.matches(withMarkers("com.example", null)));
+        assertFalse(signature.matches(withMarkers("other.com.example.cheat", null)));
+    }
+
+    @Test
+    void entrypointPrefixAlsoRespectsTheDotBoundary() {
+        Signature signature = new Signature();
+        signature.match.entrypoints = List.of("com.example.cheat");
+        assertTrue(signature.matches(withMarkers(null, "com.example.cheat.Main")));
+        assertTrue(signature.matches(withMarkers(null, "com.example.cheat")));
+        assertFalse(signature.matches(withMarkers(null, "com.example.cheater.Main")));
+        signature.match.entrypoints = List.of("");
+        assertFalse(signature.matches(withMarkers(null, "anything.Main")));
+    }
+
+    @Test
+    void prefixCaseFoldingIsIndependentOfServerLocale() {
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            Signature signature = new Signature();
+            signature.match.packages = List.of("COM.IDENTITY");
+            assertTrue(signature.matches(withMarkers("com.identity.client", null)));
+            assertFalse(signature.matches(withMarkers("com.identityextra", null)));
+        } finally {
+            Locale.setDefault(previous);
+        }
+    }
+
+    private static ModEntry withMarkers(String pkg, String entrypoint) {
+        return new ModEntry("renamed", "1", "", new ModMarkers(List.of(),
+                entrypoint == null ? List.of() : List.of(entrypoint), pkg == null ? List.of() : List.of(pkg)));
     }
 
     private static void assertCategory(SignatureDatabase db, String id, String category) {

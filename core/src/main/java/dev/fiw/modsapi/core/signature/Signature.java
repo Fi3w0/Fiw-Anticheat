@@ -3,6 +3,7 @@ package dev.fiw.modsapi.core.signature;
 import dev.fiw.modsapi.core.model.ModEntry;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * One known-mod fingerprint. A signature matches a reported mod if <em>any</em>
@@ -51,14 +52,16 @@ public final class Signature {
         return false;
     }
 
-    /** True if any reported value starts with any rule prefix (case-insensitive). */
+    /** Case-insensitive exact match or descendant at a dot boundary. */
     private static boolean anyPrefix(List<String> prefixes, List<String> values) {
         if (prefixes == null || values == null) return false;
         for (String value : values) {
             if (value == null) continue;
-            String v = value.toLowerCase();
+            String v = value.toLowerCase(Locale.ROOT);
             for (String prefix : prefixes) {
-                if (prefix != null && v.startsWith(prefix.toLowerCase())) return true;
+                if (prefix == null || prefix.isEmpty()) continue;
+                String p = prefix.toLowerCase(Locale.ROOT);
+                if (v.equals(p) || v.startsWith(p + ".")) return true;
             }
         }
         return false;
