@@ -4,6 +4,9 @@ All notable changes to **Fiw AntiCheat** are listed here.
 
 ## [Unreleased]
 
+### Changed
+- Include local regression configs and server/restart command checklists for exemptions, persistence and package matching.
+
 ### Fixed
 - Synchronize English/Spanish documentation on bundled signatures, reload behavior, preset-tier fields, collected data/storage and the intentional absence of 1.21.8 support. Existing `bypass_players` entries remain supported alongside tiers.
 - Package/entrypoint prefixes match only an exact name or a descendant separated by a dot, preventing unrelated longer names from matching. Matching stays case-insensitive across server locales.

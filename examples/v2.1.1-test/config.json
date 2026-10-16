@@ -1,0 +1,49 @@
+{
+  "mode": "blacklist",
+  "timeout_seconds": 10,
+  "kick_message": "QA blocked report",
+  "timeout_message": "QA verification timeout",
+  "detection": {
+    "preset": "balanced",
+    "monitor_only": false,
+    "alert_staff": true,
+    "allow_overrides": [],
+    "banned_mods": []
+  },
+  "resource_packs": {
+    "log": true,
+    "kick_on_banned": false,
+    "banned_packs": [],
+    "banned_fingerprints": []
+  },
+  "exemptions": {
+    "floodgate_auto": true,
+    "bypass_players": [
+      "qa_legacy"
+    ],
+    "player_overrides": {
+      "qa_expired": {
+        "tier": "bypass",
+        "expires_at": 1
+      },
+      "qa_future": {
+        "tier": "silent",
+        "expires_at": 4102444800000
+      },
+      "qa_permanent": {
+        "tier": "preset",
+        "preset": "strict",
+        "expires_at": null
+      }
+    },
+    "escalation_rules": []
+  },
+  "profiling": {
+    "enabled": true,
+    "max_history": 200
+  },
+  "whitelist": {
+    "require_all": true,
+    "official_mods": []
+  }
+}

@@ -169,6 +169,8 @@ players.
 | `/fiwmods exempt remove <player>` | Remove any exemption for a player |
 | `/fiwmods exempt list` | List all active exemptions |
 
+The current local regression configs, server commands and honest runtime status are in [examples/v2.1.1-test](examples/v2.1.1-test/README.md).
+
 ## Building And Testing
 
 Use Java 21 to run the full multi-project build. Java 17 can build the 1.20.1

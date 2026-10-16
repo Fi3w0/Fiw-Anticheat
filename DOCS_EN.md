@@ -428,6 +428,8 @@ pack sets are sent to the server.
 
 ## 12. Building from source
 
+The local regression pack and server/restart command checklist are in [examples/v2.1.1-test](examples/v2.1.1-test/README.md). Its runtime checks remain unexecuted until a server can start; core simulations are listed separately.
+
 ```bash
 # Use Java 21 to run the full multi-project build.
 ./gradlew build          # builds core + every loader target

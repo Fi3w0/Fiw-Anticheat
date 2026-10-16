@@ -1,0 +1,14 @@
+fiwmods reload
+fiwmods exempt list
+fiwmods exempt add qa_added silent 1
+fiwmods exempt list
+fiwmods reload
+fiwmods exempt list
+fiwmods exempt remove qa_added
+fiwmods exempt add qa_invalid nonsense
+fiwmods exempt add qa_invalid preset 0 nonsense
+fiwmods exempt add qa_preset preset 0 strict
+fiwmods exempt list
+fiwmods exempt remove qa_preset
+fiwmods exempt list
+save-all flush

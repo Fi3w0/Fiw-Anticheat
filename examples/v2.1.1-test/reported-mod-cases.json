@@ -1,0 +1,110 @@
+[
+  {
+    "name": "exact banned package",
+    "mods": [
+      {
+        "id": "qa_reporter_mod",
+        "version": "1.0",
+        "fingerprint": "",
+        "markers": {
+          "mixinConfigs": [],
+          "entrypoints": [],
+          "packages": [
+            "net.wurstclient"
+          ]
+        }
+      }
+    ],
+    "expectedKick": true
+  },
+  {
+    "name": "descendant banned package",
+    "mods": [
+      {
+        "id": "qa_reporter_mod",
+        "version": "1.0",
+        "fingerprint": "",
+        "markers": {
+          "mixinConfigs": [],
+          "entrypoints": [],
+          "packages": [
+            "net.wurstclient.client"
+          ]
+        }
+      }
+    ],
+    "expectedKick": true
+  },
+  {
+    "name": "case-insensitive descendant",
+    "mods": [
+      {
+        "id": "qa_reporter_mod",
+        "version": "1.0",
+        "fingerprint": "",
+        "markers": {
+          "mixinConfigs": [],
+          "entrypoints": [],
+          "packages": [
+            "NET.WURSTCLIENT.Client"
+          ]
+        }
+      }
+    ],
+    "expectedKick": true
+  },
+  {
+    "name": "longer sibling is not a descendant",
+    "mods": [
+      {
+        "id": "qa_reporter_mod",
+        "version": "1.0",
+        "fingerprint": "",
+        "markers": {
+          "mixinConfigs": [],
+          "entrypoints": [],
+          "packages": [
+            "net.wurstclienttools"
+          ]
+        }
+      }
+    ],
+    "expectedKick": false
+  },
+  {
+    "name": "prefix appearing later is unrelated",
+    "mods": [
+      {
+        "id": "qa_reporter_mod",
+        "version": "1.0",
+        "fingerprint": "",
+        "markers": {
+          "mixinConfigs": [],
+          "entrypoints": [],
+          "packages": [
+            "other.net.wurstclient"
+          ]
+        }
+      }
+    ],
+    "expectedKick": false
+  },
+  {
+    "name": "clean reported mod",
+    "mods": [
+      {
+        "id": "sodium",
+        "version": "qa",
+        "fingerprint": "",
+        "markers": {
+          "packages": [
+            "net.caffeinemc.mods.sodium"
+          ],
+          "mixinConfigs": [],
+          "entrypoints": []
+        }
+      }
+    ],
+    "expectedKick": false
+  }
+]

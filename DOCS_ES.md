@@ -437,6 +437,8 @@ servidor los sets de packs que cambiaron.
 
 ## 12. Compilar desde el codigo
 
+Los configs de regresion y la lista de comandos para servidor/reinicio estan en [examples/v2.1.1-test](examples/v2.1.1-test/README.md). Las pruebas de servidor siguen pendientes hasta que pueda arrancar; las simulaciones del motor se indican por separado.
+
 ```bash
 # Usa Java 21 para correr el build multi-proyecto completo.
 ./gradlew build          # compila core + todos los targets

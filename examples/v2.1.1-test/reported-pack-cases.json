@@ -1,0 +1,14 @@
+[
+  {
+    "id": "file/qa_enabled.zip",
+    "name": "qa_enabled.zip",
+    "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "active": true
+  },
+  {
+    "id": "file/qa_disabled.zip",
+    "name": "qa_disabled.zip",
+    "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "active": false
+  }
+]
