@@ -2,7 +2,7 @@
 
 This is for a disposable dedicated server, never the live server's config. There is no 1.21.8 AntiCheat jar; use its six supported targets. The user's two-instance player pass is for Bosses/Custom Items; this document does not ask for another manual AntiCheat pass yet.
 
-Status on 2026-10-16: all six `runServer` launches failed before configuration with the local-socket restriction. No server reached `Done`, and no real companion handshake/join result has been established. Core-engine simulations are recorded separately below.
+Status on 2026-10-16 after access was enabled: full Gradle build and all 45 core tests passed. All six dedicated servers passed the command/config checks over three clean boot/stop cycles each. No real companion handshake/join result has been established; core-engine simulations remain separate below.
 
 ## Build and seed config
 
@@ -28,17 +28,18 @@ Listing is read-only: the expired map entry may still be present in the file unt
 
 All `/fiwmods` commands require level 4. Enter `console-smoke.txt` one line at a time, without `/` in the dedicated-server console. In player chat prefix the same commands with `/`.
 
-- [ ] Reload and list: three visible grants and explicit UTC, with no expired row.
-- [ ] Add `qa_added silent 1`: list now contains four. Reload: still four. Inspect `config.json` for that grant and its expiry.
-- [ ] Clean `stop`, restart, list: the same grant/expiry is still present, not reset to a new hour.
-- [ ] Remove `qa_added`: list returns to three; reload/restart does not resurrect it.
-- [ ] Invalid tier and invalid preset commands report useful errors and do not add `qa_invalid`.
-- [ ] Add `qa_preset preset 0 strict`: stored as separate `"tier": "preset", "preset": "strict"` fields with a permanent expiry. Remove it afterwards.
-- [ ] After saves, `config.json` remains parseable and there are no abandoned `*.tmp` files. Previously recorded `profiles/<uuid>.json` files should also remain parseable across repeated reports/restarts.
+- [x] Reload and list: three visible grants and explicit UTC, with no expired row.
+- [x] Add `qa_added silent 1`: list now contains four. Reload: still four. Inspect `config.json` for that grant and its expiry.
+- [x] Clean `stop`, restart, list: the same grant/expiry is still present, not reset to a new hour.
+- [x] Remove `qa_added`: list returns to three; reload/restart does not resurrect it.
+- [x] Invalid tier and invalid preset commands report useful errors and do not add `qa_invalid`.
+- [x] Add `qa_preset preset 0 strict`: stored as separate `"tier": "preset", "preset": "strict"` fields with a permanent expiry. Remove it afterwards.
+- [x] After saves on every target, `config.json` remains parseable and there are no abandoned `*.tmp` files.
+- Profile atomic writes/history pass the core tests. These headless runs had no companion-generated player reports, so they do not establish end-to-end profile collection.
 
 A successful clean write does not prove crash-during-write behavior. The direct core unit test simulates an interrupted write and checks the prior file is intact; do not corrupt a live config/profile to test it manually.
 
-## Real client cases still required when server execution is available
+## Real client cases still unverified
 
 - [ ] Matching clean companion joins, completes verification and unfreezes.
 - [ ] No companion times out using the configured message.
@@ -52,15 +53,19 @@ The synthetic `reported-mod-cases.json` exercises real bundled package signature
 
 The 45 existing JUnit tests pass. Production-core validation of this pack separately checks its active/expired list, atomic grant/remove persistence through engine recreation, six report cases against the bundled signatures, and active/inactive pack history through profile reload. These checks are not Minecraft server tests.
 
-## Dedicated-server attempt record
+## Dedicated-server results (2026-10-16)
 
-Each command was attempted from this repo on Java 21 with a writable temporary Gradle cache. All failed before configuration with `FileLockContentionHandler` → `java.net.SocketException: Operation not permitted`. Direct TCP and UDP binds on 127.0.0.1 also return EPERM. Logs: `/private/tmp/fiw-runtime-20261016/`.
+`./gradlew build --stacktrace` on Java 21 passed all six targets and 45 core tests. Each target reached `Done` three times and stopped cleanly with exit 0. The same command sequence verified three seeded active grants/UTC/no expired row, four after adding `qa_added`, unchanged expiry through restart, removal surviving another restart, valid permanent preset grant/removal, invalid tier/preset refusal, read-only listing and no orphan temp files after actual config saves.
 
-| Target | Command | Result |
+| Target | Build | Command/config/restarts |
 |---|---|---|
-| `fabric-1.21.11` | `./gradlew :fabric-1.21.11:runServer --console=plain --stacktrace` | Blocked before configuration |
-| `neoforge-1.21.11` | `./gradlew :neoforge-1.21.11:runServer --console=plain --stacktrace` | Blocked before configuration |
-| `fabric-1.21.1` | `./gradlew :fabric-1.21.1:runServer --console=plain --stacktrace` | Blocked before configuration |
-| `neoforge-1.21.1` | `./gradlew :neoforge-1.21.1:runServer --console=plain --stacktrace` | Blocked before configuration |
-| `fabric-1.20.1` | `./gradlew :fabric-1.20.1:runServer --console=plain --stacktrace` | Blocked before configuration |
-| `forge-1.20.1` | `./gradlew :forge-1.20.1:runServer --console=plain --stacktrace` | Blocked before configuration |
+| Fabric 1.21.11 | Pass | Pass |
+| NeoForge 1.21.11 | Pass | Pass |
+| Fabric 1.21.1 | Pass | Pass |
+| NeoForge 1.21.1 | Pass | Pass |
+| Fabric 1.20.1 | Pass | Pass |
+| Forge 1.20.1 | Pass | Pass |
+
+Tests use dedicated loopback servers in isolated disposable `qa_world` directories. A temporary external Gradle init script selects the appropriate run directory and forwards console input; no CI/build-tooling changes were committed. Logs/results: `/private/tmp/fiw-live-20261016/anticheat-results.json` and matching `anticheat-*.log`. These supersede the earlier sandbox-blocked attempts.
+
+No connected client was used: companion transport, actual loader marker collection, freeze/unfreeze, kicks and live profile reporting remain unverified. Synthetic report cases and profile persistence are core checks, not transport tests. The two-instance manual player pass remains for Bosses/Custom Items only. No push/tag/release.
