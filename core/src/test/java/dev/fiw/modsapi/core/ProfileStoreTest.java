@@ -120,4 +120,17 @@ class ProfileStoreTest {
     void retentionWithNoProfilesFolderIsANoOp(@TempDir Path dir) throws IOException {
         assertEquals(0, new ProfileStore(dir).purgeOlderThan(30));
     }
+
+    @Test
+    void recheckReportsDoNotCountAsJoins(@TempDir Path dir) throws IOException {
+        ProfileStore store = new ProfileStore(dir);
+        UUID uuid = UUID.randomUUID();
+        List<ModEntry> mods = List.of(new ModEntry("sodium", "1"));
+
+        store.record(uuid, "Steve", mods, List.of(), 200, true);
+        store.record(uuid, "Steve", mods, List.of(), 200, false);
+        store.record(uuid, "Steve", mods, 200, false);
+
+        assertEquals(1, store.load(uuid).joins);
+    }
 }

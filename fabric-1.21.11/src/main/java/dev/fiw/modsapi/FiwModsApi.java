@@ -145,7 +145,7 @@ public final class FiwModsApi implements ModInitializer {
         }
         ChallengeManager.Pending pending = check.pending();
 
-        engine.recordProfile(uuid, name, mods, resourcePacks);
+        engine.recordProfile(uuid, name, mods, resourcePacks, pending.join());
 
         // snapshot capture mode
         if (pending.capture()) {

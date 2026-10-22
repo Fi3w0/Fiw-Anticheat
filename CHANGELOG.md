@@ -15,6 +15,9 @@ New features on top of the 2.1.2 security fixes. The network protocol is unchang
 ### Changed
 - Console lines and staff alerts now say how a mod or pack was detected and on which value, e.g. `Freecam (package net.xolt.freecam.mixin)` or `X-ray pack (pack fingerprint …)`. Console lines also show the reported mod id when it differs.
 
+### Fixed
+- Re-checks and `/fiwmods snapshot player` replies no longer add to the player's join count in their profile.
+
 ### Documentation
 - The privacy section no longer says saving fails on storage without atomic moves; since 2.1.1 it falls back to a normal replace.
 

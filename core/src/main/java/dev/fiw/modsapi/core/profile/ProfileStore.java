@@ -41,10 +41,19 @@ public final class ProfileStore {
      * stored current set, append change events, and persist. Returns the events
      * that were recorded this join (may be empty).
      */
+    public List<PlayerProfile.Event> record(UUID uuid,
+                                            String name,
+                                            List<ModEntry> mods,
+                                            int maxHistory) throws IOException {
+        return record(uuid, name, mods, maxHistory, true);
+    }
+
+    /** As {@link #record(UUID, String, List, int)}; {@code countJoin} false for rechecks/captures. */
     public synchronized List<PlayerProfile.Event> record(UUID uuid,
                                                          String name,
                                                          List<ModEntry> mods,
-                                                         int maxHistory) throws IOException {
+                                                         int maxHistory,
+                                                         boolean countJoin) throws IOException {
         PlayerProfile profile = load(uuid);
         String now = Instant.now().toString();
 
@@ -55,18 +64,28 @@ public final class ProfileStore {
         }
         profile.name = name;
         profile.lastSeen = now;
-        profile.joins++;
+        if (countJoin) profile.joins++;
 
         List<PlayerProfile.Event> events = diffMods(now, profile, mods);
         appendAndSave(uuid, profile, events, maxHistory);
         return events;
     }
 
+    public List<PlayerProfile.Event> record(UUID uuid,
+                                            String name,
+                                            List<ModEntry> mods,
+                                            List<ResourcePackEntry> resourcePacks,
+                                            int maxHistory) throws IOException {
+        return record(uuid, name, mods, resourcePacks, maxHistory, true);
+    }
+
+    /** As above; {@code countJoin} false for rechecks/captures of an already-online player. */
     public synchronized List<PlayerProfile.Event> record(UUID uuid,
                                                          String name,
                                                          List<ModEntry> mods,
                                                          List<ResourcePackEntry> resourcePacks,
-                                                         int maxHistory) throws IOException {
+                                                         int maxHistory,
+                                                         boolean countJoin) throws IOException {
         PlayerProfile profile = load(uuid);
         String now = Instant.now().toString();
 
@@ -77,7 +96,7 @@ public final class ProfileStore {
         }
         profile.name = name;
         profile.lastSeen = now;
-        profile.joins++;
+        if (countJoin) profile.joins++;
 
         List<PlayerProfile.Event> events = new ArrayList<>();
         events.addAll(diffMods(now, profile, mods));

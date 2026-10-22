@@ -315,12 +315,19 @@ public final class FiwModsEngine {
 
     /** Record a profiling entry with both mods and resource packs. */
     public void recordProfile(UUID uuid, String name, List<ModEntry> mods, List<ResourcePackEntry> resourcePacks) {
+        recordProfile(uuid, name, mods, resourcePacks, true);
+    }
+
+    /** As above; {@code countJoin} false when the report answers a recheck or snapshot, not a login. */
+    public void recordProfile(UUID uuid, String name, List<ModEntry> mods, List<ResourcePackEntry> resourcePacks,
+                              boolean countJoin) {
         if (!config.profiling.enabled) return;
         try {
+            int maxHistory = config.profiling.max_history;
             List<PlayerProfile.Event> events =
                     config.resource_packs != null && config.resource_packs.log
-                            ? profiles.record(uuid, name, mods, resourcePacks, config.profiling.max_history)
-                            : profiles.record(uuid, name, mods, config.profiling.max_history);
+                            ? profiles.record(uuid, name, mods, resourcePacks, maxHistory, countJoin)
+                            : profiles.record(uuid, name, mods, maxHistory, countJoin);
             if (!events.isEmpty()) {
                 String summary = summarizeEvents(events);
                 platform.logInfo("Profile change for " + name + ": " + summary);

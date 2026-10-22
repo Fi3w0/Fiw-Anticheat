@@ -18,7 +18,11 @@ public final class ChallengeManager {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    public record Pending(byte[] nonce, long timestamp, boolean capture) {}
+    /**
+     * @param join true for the challenge sent at login; snapshot captures and rechecks of an
+     *             already-online player are not joins and must not count as one in the profile
+     */
+    public record Pending(byte[] nonce, long timestamp, boolean capture, boolean join) {}
 
     /** How a response compared against the player's pending challenge. */
     public enum Outcome {
@@ -39,7 +43,7 @@ public final class ChallengeManager {
     /** Create + store a nonce for a player. {@code capture} marks it as a snapshot capture. */
     public byte[] create(UUID player, boolean capture) {
         byte[] nonce = newNonce();
-        pending.put(player, new Pending(nonce, System.currentTimeMillis(), capture));
+        pending.put(player, new Pending(nonce, System.currentTimeMillis(), capture, true));
         return nonce;
     }
 
@@ -50,7 +54,7 @@ public final class ChallengeManager {
      */
     public byte[] createIfIdle(UUID player, boolean capture) {
         byte[] nonce = newNonce();
-        Pending existing = pending.putIfAbsent(player, new Pending(nonce, System.currentTimeMillis(), capture));
+        Pending existing = pending.putIfAbsent(player, new Pending(nonce, System.currentTimeMillis(), capture, false));
         return existing == null ? nonce : null;
     }
 

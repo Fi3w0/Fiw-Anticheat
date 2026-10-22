@@ -164,7 +164,7 @@ public final class FiwModsApi {
         }
         ChallengeManager.Pending pending = check.pending();
 
-        engine.recordProfile(uuid, name, mods, resourcePacks);
+        engine.recordProfile(uuid, name, mods, resourcePacks, pending.join());
 
         if (pending.capture()) {
             engine.captureSnapshot(mods, "player " + name);

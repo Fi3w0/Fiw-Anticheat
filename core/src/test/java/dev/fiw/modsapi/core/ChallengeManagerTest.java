@@ -104,6 +104,19 @@ class ChallengeManagerTest {
     }
 
     @Test
+    void onlyLoginChallengesCountAsJoins() {
+        ChallengeManager challenges = new ChallengeManager();
+        byte[] join = challenges.create(player, false);
+        assertTrue(challenges.verify(player, join, TIMEOUT).pending().join());
+
+        byte[] recheck = challenges.createIfIdle(player, false);
+        assertFalse(challenges.verify(player, recheck, TIMEOUT).pending().join());
+
+        byte[] capture = challenges.createIfIdle(player, true);
+        assertFalse(challenges.verify(player, capture, TIMEOUT).pending().join());
+    }
+
+    @Test
     void captureIsIssuedWhenIdle() {
         ChallengeManager challenges = new ChallengeManager();
         byte[] nonce = challenges.createIfIdle(player, true);
