@@ -251,6 +251,45 @@ public final class ProfileStore {
         save(uuid, profile);
     }
 
+    /**
+     * Delete profiles whose player was last seen before {@code retentionDays} days ago.
+     * Uses the profile's {@code lastSeen}, or the file's modification time when that is
+     * missing. Files that can't be read are left alone. Returns how many were deleted.
+     */
+    public synchronized int purgeOlderThan(int retentionDays) throws IOException {
+        if (retentionDays <= 0 || !Files.isDirectory(profilesDir)) return 0;
+        Instant cutoff = Instant.now().minus(Duration.ofDays(retentionDays));
+        int deleted = 0;
+        try (java.util.stream.Stream<Path> files = Files.list(profilesDir)) {
+            for (Path file : (Iterable<Path>) files::iterator) {
+                String fileName = file.getFileName().toString();
+                if (!fileName.endsWith(".json")) continue;
+                Instant lastSeen = lastSeen(file);
+                if (lastSeen != null && lastSeen.isBefore(cutoff) && Files.deleteIfExists(file)) {
+                    deleted++;
+                }
+            }
+        }
+        return deleted;
+    }
+
+    private static Instant lastSeen(Path file) {
+        try (Reader r = Files.newBufferedReader(file)) {
+            PlayerProfile profile = GSON.fromJson(r, PlayerProfile.class);
+            if (profile == null) return null;
+            if (profile.lastSeen != null) {
+                try {
+                    return Instant.parse(profile.lastSeen);
+                } catch (Exception ignored) {
+                    // fall back to the file time below
+                }
+            }
+            return Files.getLastModifiedTime(file).toInstant();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public PlayerProfile load(UUID uuid) {
         Path file = profilesDir.resolve(uuid + ".json");
         if (!Files.exists(file)) return null;

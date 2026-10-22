@@ -155,7 +155,7 @@ Config por defecto completa:
     "player_overrides": {},
     "escalation_rules": []
   },
-  "profiling": { "enabled": true, "max_history": 200 },
+  "profiling": { "enabled": true, "max_history": 200, "retention_days": 0 },
   "whitelist": { "require_all": true, "official_mods": [] }
 }
 ```
@@ -253,6 +253,7 @@ las reglas de escalado se saltan para el hasta que expire o se elimine.
 |---|---|---|---|
 | `enabled` | bool | `true` | Guardar perfiles de mods por jugador (ver seccion 9). |
 | `max_history` | int | `200` | Maximo de eventos de cambio guardados por jugador antes de recortar los mas viejos. |
+| `retention_days` | int | `0` | Borra los perfiles de jugadores que no se han visto en esa cantidad de dias. `0` los guarda para siempre. Se revisa al iniciar el servidor y con `/fiwmods reload`. |
 
 ### `whitelist`
 
@@ -409,7 +410,7 @@ El companero envia al servidor ids de mods, versiones, huellas SHA-256 de jars y
 
 Con perfiles habilitados, `config/fiw-mods-api/profiles/<uuid>.json` guarda UUID/nombre, primera/ultima visita, numero de entradas, ids/versiones de mods, nombres/ids/hashes de packs activos e inactivos, historial de cambios y fechas de detecciones recientes para el escalado. Los hashes de jars y marcadores de paquetes se usan al evaluar; el formato actual de perfil no los guarda. `/fiwmods snapshot` guarda ids/versiones/hashes de mods oficiales en `config/fiw-mods-api/config.json`. Los mensajes de deteccion y cambios tambien aparecen en los logs del servidor y las alertas opcionales al staff.
 
-`profiling.enabled: false` desactiva el registro ordinario de perfiles de mods/packs; las reglas de escalado todavia pueden guardar fechas de detecciones. `resource_packs.log: false` desactiva el registro de packs y su evaluacion de bans, pero no impide que el companero reporte sus metadatos. `max_history` limita los eventos (200 por defecto); no existe caducidad automatica de archivos de perfil. Restringe el acceso a perfiles, config, logs y copias de seguridad. Se guardan con reemplazo atomico; si el sistema de archivos no admite movimientos atomicos, el guardado falla y conserva el archivo anterior.
+`profiling.enabled: false` desactiva el registro ordinario de perfiles de mods/packs; las reglas de escalado todavia pueden guardar fechas de detecciones. `resource_packs.log: false` desactiva el registro de packs y su evaluacion de bans, pero no impide que el companero reporte sus metadatos. `max_history` limita los eventos (200 por defecto). `retention_days` (0 por defecto = nunca) borra el archivo de perfil de un jugador, incluidas sus fechas de escalado, cuando no se le ha visto en esa cantidad de dias; se ejecuta al iniciar el servidor y con `/fiwmods reload`. Restringe el acceso a perfiles, config, logs y copias de seguridad. Estos archivos se escriben primero en un archivo temporal y luego se reemplazan; si el almacenamiento no admite el reemplazo atomico, se usa un reemplazo normal.
 
 ---
 
@@ -422,6 +423,8 @@ Con perfiles habilitados, `config/fiw-mods-api/profiles/<uuid>.json` guarda UUID
 | `/fiwmods reload` | Relee `config/fiw-mods-api/config.json` y las firmas incluidas en el jar instalado; no lee un archivo externo de firmas |
 | `/fiwmods snapshot server` | Captura los mods del **propio servidor** como whitelist |
 | `/fiwmods snapshot player <nombre>` | Captura los mods reportados por un jugador conectado como whitelist |
+| `/fiwmods recheck player <nombre>` | Vuelve a revisar los mods de un jugador conectado sin congelarlo. Una respuesta incorrecta o ausente lo expulsa, igual que al entrar. Omite a jugadores exentos y a los que ya se estan verificando. |
+| `/fiwmods recheck all` | Lo mismo para todos los jugadores conectados, por ejemplo despues de cambiar la lista de bans y usar `/fiwmods reload`. |
 | `/fiwmods profile <nombre>` | Muestra mods, resource packs e historial reciente |
 | `/fiwmods exempt add <jugador> <nivel> [horas] [preset]` | Otorga un nivel de exencion (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). `[horas]` fija una expiracion (omite o usa `0` para permanente); `[preset]` solo es necesario cuando `<nivel>` es `preset`. |
 | `/fiwmods exempt remove <jugador>` | Elimina cualquier exencion (override o entrada heredada de bypass) para `<jugador>` |

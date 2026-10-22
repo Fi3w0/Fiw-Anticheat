@@ -2,6 +2,22 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
+## [2.2.0] - Re-checks, clearer detections, profile retention
+
+New features on top of the 2.1.2 security fixes. The network protocol is unchanged.
+
+> **⚠ Upgrade note:** use the same Fiw AntiCheat version on the server and on players' clients.
+
+### Added
+- `/fiwmods recheck player <name>` and `/fiwmods recheck all` re-run the mod check on online players without freezing them, so a changed ban list applies without waiting for players to rejoin. A bad or missing reply kicks, as on join. Exempt players and players already being verified are skipped.
+- `profiling.retention_days` deletes profiles of players not seen for that many days. `0` (the default) keeps them forever. It runs at server start and on `/fiwmods reload`.
+
+### Changed
+- Console lines and staff alerts now say how a mod or pack was detected and on which value, e.g. `Freecam (package net.xolt.freecam.mixin)` or `X-ray pack (pack fingerprint …)`. Console lines also show the reported mod id when it differs.
+
+### Documentation
+- The privacy section no longer says saving fails on storage without atomic moves; since 2.1.1 it falls back to a normal replace.
+
 ## [2.1.2] - Security fixes for the join check
 
 Security and bug-fix update. The network protocol is unchanged.

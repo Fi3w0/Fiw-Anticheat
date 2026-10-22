@@ -81,4 +81,43 @@ class ProfileStoreTest {
         assertEquals(0, loaded.activeResourcePacks.size());
         assertEquals(0, loaded.inactiveResourcePacks.size());
     }
+
+    @Test
+    void retentionDeletesOnlyProfilesNotSeenRecently(@TempDir Path dir) throws IOException {
+        ProfileStore store = new ProfileStore(dir);
+        UUID recent = UUID.randomUUID();
+        UUID old = UUID.randomUUID();
+        store.record(recent, "Recent", List.of(new ModEntry("sodium", "1")), 200);
+        Path profiles = dir.resolve("profiles");
+        java.nio.file.Files.writeString(profiles.resolve(old + ".json"),
+                "{\"uuid\":\"" + old + "\",\"lastSeen\":\"2020-01-01T00:00:00Z\"}");
+        java.nio.file.Files.writeString(profiles.resolve("broken.json"), "{not json");
+        java.nio.file.Files.writeString(profiles.resolve("notes.txt"), "keep me");
+
+        assertEquals(0, store.purgeOlderThan(0), "0 days keeps everything");
+        assertEquals(1, store.purgeOlderThan(30));
+
+        assertNotNull(store.load(recent));
+        assertNull(store.load(old));
+        assertTrue(java.nio.file.Files.exists(profiles.resolve("broken.json")), "unreadable files are left alone");
+        assertTrue(java.nio.file.Files.exists(profiles.resolve("notes.txt")));
+    }
+
+    @Test
+    void retentionFallsBackToFileTimeWithoutLastSeen(@TempDir Path dir) throws IOException {
+        ProfileStore store = new ProfileStore(dir);
+        Path profiles = java.nio.file.Files.createDirectories(dir.resolve("profiles"));
+        Path file = profiles.resolve(UUID.randomUUID() + ".json");
+        java.nio.file.Files.writeString(file, "{\"detectionTimestamps\":[]}");
+        java.nio.file.Files.setLastModifiedTime(file,
+                java.nio.file.attribute.FileTime.from(java.time.Instant.now().minus(java.time.Duration.ofDays(40))));
+
+        assertEquals(1, store.purgeOlderThan(30));
+        assertFalse(java.nio.file.Files.exists(file));
+    }
+
+    @Test
+    void retentionWithNoProfilesFolderIsANoOp(@TempDir Path dir) throws IOException {
+        assertEquals(0, new ProfileStore(dir).purgeOlderThan(30));
+    }
 }

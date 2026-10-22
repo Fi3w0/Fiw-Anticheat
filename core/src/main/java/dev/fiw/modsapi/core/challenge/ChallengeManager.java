@@ -44,13 +44,13 @@ public final class ChallengeManager {
     }
 
     /**
-     * Create a snapshot-capture challenge, unless the player already has a challenge
-     * pending (e.g. they are still being verified on join). Returns null in that case
-     * so a capture can never replace — and silently skip — a join verification.
+     * Create a challenge for an already-online player (snapshot capture or recheck), unless
+     * one is already pending (e.g. they are still being verified on join). Returns null in
+     * that case so it can never replace — and silently skip — a pending verification.
      */
-    public byte[] createCapture(UUID player) {
+    public byte[] createIfIdle(UUID player, boolean capture) {
         byte[] nonce = newNonce();
-        Pending existing = pending.putIfAbsent(player, new Pending(nonce, System.currentTimeMillis(), true));
+        Pending existing = pending.putIfAbsent(player, new Pending(nonce, System.currentTimeMillis(), capture));
         return existing == null ? nonce : null;
     }
 

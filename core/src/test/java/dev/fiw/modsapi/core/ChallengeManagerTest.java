@@ -80,16 +80,33 @@ class ChallengeManagerTest {
         ChallengeManager challenges = new ChallengeManager();
         byte[] joinNonce = challenges.create(player, false);
 
-        assertNull(challenges.createCapture(player));
+        assertNull(challenges.createIfIdle(player, true));
         ChallengeManager.Verification check = challenges.verify(player, joinNonce, TIMEOUT);
         assertEquals(Outcome.VALID, check.outcome());
         assertFalse(check.pending().capture());
     }
 
     @Test
+    void recheckCannotReplaceAPendingChallengeEither() {
+        ChallengeManager challenges = new ChallengeManager();
+        challenges.createIfIdle(player, true);
+        assertNull(challenges.createIfIdle(player, false));
+    }
+
+    @Test
+    void recheckIsAJoinStyleChallenge() throws InterruptedException {
+        ChallengeManager challenges = new ChallengeManager();
+        byte[] nonce = challenges.createIfIdle(player, false);
+        assertNotNull(nonce);
+        Thread.sleep(5);
+        // unlike a capture, an unanswered recheck is reported for a timeout kick
+        assertEquals(java.util.List.of(player), challenges.expired(1));
+    }
+
+    @Test
     void captureIsIssuedWhenIdle() {
         ChallengeManager challenges = new ChallengeManager();
-        byte[] nonce = challenges.createCapture(player);
+        byte[] nonce = challenges.createIfIdle(player, true);
         assertNotNull(nonce);
 
         ChallengeManager.Verification check = challenges.verify(player, nonce, TIMEOUT);
@@ -101,7 +118,7 @@ class ChallengeManagerTest {
     void expiredCaptureIsDroppedNotReportedForKick() throws InterruptedException {
         ChallengeManager challenges = new ChallengeManager();
         UUID joiner = UUID.randomUUID();
-        challenges.createCapture(player);
+        challenges.createIfIdle(player, true);
         challenges.create(joiner, false);
         Thread.sleep(5);
 
@@ -113,7 +130,7 @@ class ChallengeManagerTest {
     @Test
     void lateCaptureReplyIsIgnored() throws InterruptedException {
         ChallengeManager challenges = new ChallengeManager();
-        byte[] nonce = challenges.createCapture(player);
+        byte[] nonce = challenges.createIfIdle(player, true);
         Thread.sleep(5);
 
         assertEquals(Outcome.NONE, challenges.verify(player, nonce, 1).outcome());

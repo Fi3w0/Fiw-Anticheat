@@ -20,10 +20,38 @@ public record EvaluationResult(boolean kick,
                                List<Detected> detected,
                                boolean suppressAlert) {
 
-    /** A single blocked-mod hit. */
-    public record Detected(String modName, String category, String modId) {}
+    /**
+     * A single blocked-mod or banned-pack hit.
+     *
+     * @param matchType  how it matched: {@code id}, {@code mixin}, {@code entrypoint},
+     *                   {@code package}, {@code pack id}, {@code pack name} or {@code pack fingerprint}
+     * @param matchValue the reported value that matched
+     */
+    public record Detected(String modName, String category, String modId, String matchType, String matchValue) {
+
+        public Detected(String modName, String category, String modId) {
+            this(modName, category, modId, "id", modId);
+        }
+
+        /** Console line: what matched, how, and on which reported value. */
+        public String describe() {
+            return modName + " [" + category + "] matched " + matchType + " '" + matchValue + "'"
+                    + (modId.equals(matchValue) ? "" : " (id=" + modId + ")");
+        }
+    }
 
     public boolean hasDetections() {
         return detected != null && !detected.isEmpty();
+    }
+
+    /** Staff chat alert for these detections, e.g. {@code Steve using: Freecam (package com.x.freecam)}. */
+    public String alertText(String playerName) {
+        StringBuilder sb = new StringBuilder("[FiwAntiCheat] ").append(playerName).append(" using: ");
+        for (int i = 0; i < detected.size(); i++) {
+            Detected d = detected.get(i);
+            if (i > 0) sb.append(", ");
+            sb.append(d.modName()).append(" (").append(d.matchType()).append(' ').append(d.matchValue()).append(')');
+        }
+        return sb.toString();
     }
 }

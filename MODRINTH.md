@@ -70,6 +70,7 @@ All commands require permission level 4.
 | `/fiwmods reload` | Reload config and bundled signatures |
 | `/fiwmods snapshot server` | Capture the server's loaded mods into the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods into the whitelist |
+| `/fiwmods recheck player <name>` / `recheck all` | Re-run the mod check on online players without freezing them |
 | `/fiwmods profile <name>` | Show grouped current mods, resource packs, and recent profile history |
 | `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant an exemption tier, optionally with an expiry and a preset name |
 | `/fiwmods exempt remove <player>` | Remove any exemption for a player |

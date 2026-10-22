@@ -39,10 +39,14 @@ public final class SignatureDatabase {
         return new SignatureDatabase(arr == null ? List.of() : List.of(arr));
     }
 
+    /** A signature together with the rule that matched. */
+    public record Match(Signature signature, Signature.Hit hit) {}
+
     /** First signature that matches the given mod, if any. */
-    public Optional<Signature> firstMatch(ModEntry mod) {
+    public Optional<Match> firstMatch(ModEntry mod) {
         for (Signature s : signatures) {
-            if (s.matches(mod)) return Optional.of(s);
+            Signature.Hit hit = s.findHit(mod);
+            if (hit != null) return Optional.of(new Match(s, hit));
         }
         return Optional.empty();
     }

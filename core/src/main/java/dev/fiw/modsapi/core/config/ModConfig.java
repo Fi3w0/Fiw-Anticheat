@@ -103,6 +103,8 @@ public final class ModConfig {
     public static final class Profiling {
         public boolean enabled = true;
         public int max_history = 200;
+        /** Delete profiles of players not seen for this many days (0 = keep forever). */
+        public int retention_days = 0;
     }
 
     public static final class Whitelist {

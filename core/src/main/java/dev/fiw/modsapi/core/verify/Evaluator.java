@@ -65,11 +65,13 @@ public final class Evaluator {
         for (ModEntry mod : mods) {
             if (overrides.contains(mod.id().toLowerCase())) continue;
 
-            Optional<Signature> match = signatures.firstMatch(mod);
+            Optional<SignatureDatabase.Match> match = signatures.firstMatch(mod);
             if (match.isPresent()) {
-                Signature sig = match.get();
+                Signature sig = match.get().signature();
                 if (blocked.getOrDefault(sig.category, false)) {
-                    blockedMods.add(new EvaluationResult.Detected(sig.name, sig.category, mod.id()));
+                    Signature.Hit hit = match.get().hit();
+                    blockedMods.add(new EvaluationResult.Detected(sig.name, sig.category, mod.id(),
+                            hit.type(), hit.value()));
                     continue;
                 }
             }
@@ -248,12 +250,23 @@ public final class Evaluator {
             String id = pack.id().toLowerCase();
             String name = pack.displayName().toLowerCase();
             String fingerprint = pack.fingerprint().toLowerCase();
-            if (banned.contains(id) || banned.contains(name)
-                    || (!fingerprint.isEmpty() && bannedFingerprints.contains(fingerprint))) {
-                detected.add(new EvaluationResult.Detected(pack.displayName(),
-                        pack.active() ? "active_resource_pack" : "inactive_resource_pack",
-                        pack.id()));
+            String matchType;
+            String matchValue;
+            if (banned.contains(id)) {
+                matchType = "pack id";
+                matchValue = pack.id();
+            } else if (banned.contains(name)) {
+                matchType = "pack name";
+                matchValue = pack.displayName();
+            } else if (!fingerprint.isEmpty() && bannedFingerprints.contains(fingerprint)) {
+                matchType = "pack fingerprint";
+                matchValue = pack.fingerprint();
+            } else {
+                continue;
             }
+            detected.add(new EvaluationResult.Detected(pack.displayName(),
+                    pack.active() ? "active_resource_pack" : "inactive_resource_pack",
+                    pack.id(), matchType, matchValue));
         }
         return detected;
     }

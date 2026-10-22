@@ -61,6 +61,7 @@ public final class FiwModsEngine {
         }
         this.signatures = SignatureDatabase.loadBundled();
         this.profiles = new ProfileStore(platform.configDir());
+        purgeOldProfiles();
         platform.logInfo("Loaded config (mode=" + config.mode + ", preset=" + config.detection.preset
                 + ", monitor_only=" + config.detection.monitor_only + "), "
                 + signatures.size() + " mod signatures");
@@ -68,6 +69,19 @@ public final class FiwModsEngine {
                 && (config.whitelist.official_mods == null || config.whitelist.official_mods.isEmpty())) {
             platform.logWarn("WHITELIST mode with no official mods captured — running in SETUP MODE "
                     + "(everyone allowed). Run '/fiwmods snapshot server' or 'snapshot player <name>' to lock it in.");
+        }
+    }
+
+    private void purgeOldProfiles() {
+        int days = config.profiling.retention_days;
+        if (days <= 0) return;
+        try {
+            int deleted = profiles.purgeOlderThan(days);
+            if (deleted > 0) {
+                platform.logInfo("Deleted " + deleted + " player profile(s) not seen for over " + days + " days");
+            }
+        } catch (IOException e) {
+            platform.logError("Failed to delete old player profiles", e);
         }
     }
 

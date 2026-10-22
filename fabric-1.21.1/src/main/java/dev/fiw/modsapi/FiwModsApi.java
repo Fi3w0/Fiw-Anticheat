@@ -93,10 +93,28 @@ public final class FiwModsApi implements ModInitializer {
 
     /** Send a snapshot-capture challenge to an already-online player (no freeze). False while a verification is pending. */
     public static boolean sendCaptureChallenge(ServerPlayerEntity player) {
-        byte[] nonce = engine.challenges().createCapture(player.getUuid());
+        byte[] nonce = engine.challenges().createIfIdle(player.getUuid(), true);
         if (nonce == null) return false;
         ServerNetworking.sendChallenge(player, nonce);
         return true;
+    }
+
+    /**
+     * Re-run the join check on an online player without freezing them; a bad or missing
+     * reply kicks exactly as on join. Returns why the player was skipped, or null if a
+     * challenge was sent.
+     */
+    public static String recheck(ServerPlayerEntity player) {
+        ExemptionResolution resolution = resolveExemption(player);
+        if (resolution.tier() == ExemptionTier.BYPASS) return "exempt";
+        if (resolution.tier() == ExemptionTier.FORCE_BLOCK) {
+            player.networkHandler.disconnect(Text.literal(engine.config().kick_message));
+            return "force-blocked, disconnected";
+        }
+        byte[] nonce = engine.challenges().createIfIdle(player.getUuid(), false);
+        if (nonce == null) return "already being verified";
+        ServerNetworking.sendChallenge(player, nonce);
+        return null;
     }
 
     /** Handle a client's verification response (already on the server thread). */
@@ -143,16 +161,10 @@ public final class FiwModsApi implements ModInitializer {
 
         if (result.hasDetections()) {
             for (EvaluationResult.Detected d : result.detected()) {
-                LOGGER.warn("[FiwAntiCheat] {} flagged: {} [{}] (id={})",
-                        name, d.modName(), d.category(), d.modId());
+                LOGGER.warn("[FiwAntiCheat] {} flagged: {}", name, d.describe());
             }
             if (engine.config().detection.alert_staff && !result.suppressAlert()) {
-                StringBuilder sb = new StringBuilder("[FiwAntiCheat] ").append(name).append(" using: ");
-                for (int i = 0; i < result.detected().size(); i++) {
-                    if (i > 0) sb.append(", ");
-                    sb.append(result.detected().get(i).modName());
-                }
-                alertStaff(server, sb.toString());
+                alertStaff(server, result.alertText(name));
             }
         }
 
@@ -185,16 +197,10 @@ public final class FiwModsApi implements ModInitializer {
         engine.checkEscalation(uuid, name, result);
         if (result.hasDetections()) {
             for (EvaluationResult.Detected d : result.detected()) {
-                LOGGER.warn("[FiwAntiCheat] {} flagged: {} [{}] (id={})",
-                        name, d.modName(), d.category(), d.modId());
+                LOGGER.warn("[FiwAntiCheat] {} flagged: {}", name, d.describe());
             }
             if (engine.config().detection.alert_staff && !result.suppressAlert()) {
-                StringBuilder sb = new StringBuilder("[FiwAntiCheat] ").append(name).append(" using: ");
-                for (int i = 0; i < result.detected().size(); i++) {
-                    if (i > 0) sb.append(", ");
-                    sb.append(result.detected().get(i).modName());
-                }
-                alertStaff(server, sb.toString());
+                alertStaff(server, result.alertText(name));
             }
         }
         if (result.kick()) {

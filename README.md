@@ -105,7 +105,7 @@ memory and appear in newly generated configs or future saves.
     "player_overrides": {},
     "escalation_rules": []
   },
-  "profiling": { "enabled": true, "max_history": 200 },
+  "profiling": { "enabled": true, "max_history": 200, "retention_days": 0 },
   "whitelist": { "require_all": true, "official_mods": [] }
 }
 ```
@@ -164,6 +164,7 @@ players.
 | `/fiwmods reload` | Re-read `config/fiw-mods-api/config.json` and signatures from the installed jar; no external signatures file is read |
 | `/fiwmods snapshot server` | Capture the server's loaded mods as whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as whitelist |
+| `/fiwmods recheck player <name>` / `recheck all` | Re-run the mod check on online players without freezing them (e.g. after changing the ban list) |
 | `/fiwmods profile <name>` | Show grouped mods, resource packs, and recent profile history |
 | `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant an exemption tier, optionally with an expiry (hours) and a preset name (only for the `preset` tier) |
 | `/fiwmods exempt remove <player>` | Remove any exemption for a player |
@@ -214,7 +215,7 @@ The bundled signature list lives inside the jar. Developers edit `core/src/main/
 
 ## What data is collected
 
-The server receives mod ids/versions/SHA-256 hashes/package markers and active **and inactive** resource pack ids/names/hashes/status. Profiles in `config/fiw-mods-api/profiles/<uuid>.json` persist UUID/name, visits, mod ids/versions, packs and change/detection history. Mod hashes and package markers are not saved in profiles; whitelist snapshots save mod hashes in `config.json`. Logs can contain detections and changes. Profiling and pack auditing are configurable; detection timestamps can still be saved for escalation, and profiles have no automatic file expiry. Both full guides explain storage and controls. Config and profiles use atomic replacement; unsupported atomic moves fail without overwriting the prior file.
+The server receives mod ids/versions/SHA-256 hashes/package markers and active **and inactive** resource pack ids/names/hashes/status. Profiles in `config/fiw-mods-api/profiles/<uuid>.json` persist UUID/name, visits, mod ids/versions, packs and change/detection history. Mod hashes and package markers are not saved in profiles; whitelist snapshots save mod hashes in `config.json`. Logs can contain detections and changes. Profiling and pack auditing are configurable; detection timestamps can still be saved for escalation. `profiling.retention_days` deletes profiles of players not seen for that many days (0, the default, keeps them forever). Both full guides explain storage and controls. Config and profiles are written to a temporary file first and then swapped in; storage that can't swap atomically falls back to a normal replace.
 
 ## License
 

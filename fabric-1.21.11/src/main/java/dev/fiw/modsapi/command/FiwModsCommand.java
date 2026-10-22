@@ -40,6 +40,11 @@ public final class FiwModsCommand {
                                 .then(CommandManager.literal("player")
                                         .then(CommandManager.argument("name", StringArgumentType.word())
                                                 .executes(FiwModsCommand::snapshotPlayer))))
+                        .then(CommandManager.literal("recheck")
+                                .then(CommandManager.literal("all").executes(FiwModsCommand::recheckAll))
+                                .then(CommandManager.literal("player")
+                                        .then(CommandManager.argument("name", StringArgumentType.word())
+                                                .executes(FiwModsCommand::recheckPlayer))))
                         .then(CommandManager.literal("profile")
                                 .then(CommandManager.argument("name", StringArgumentType.word())
                                         .executes(FiwModsCommand::profile)))
@@ -90,6 +95,35 @@ public final class FiwModsCommand {
         ctx.getSource().sendFeedback(
                 () -> Text.literal("[FiwAntiCheat] Requested mod snapshot from " + name + "…"), true);
         return 1;
+    }
+
+    private static int recheckPlayer(CommandContext<ServerCommandSource> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        ServerPlayerEntity target = ctx.getSource().getServer().getPlayerManager().getPlayer(name);
+        if (target == null) {
+            ctx.getSource().sendError(Text.literal("[FiwAntiCheat] Player '" + name + "' is not online."));
+            return 0;
+        }
+        String skipped = FiwModsApi.recheck(target);
+        if (skipped != null) {
+            ctx.getSource().sendError(Text.literal("[FiwAntiCheat] Not re-checking " + name + ": " + skipped + "."));
+            return 0;
+        }
+        ctx.getSource().sendFeedback(() -> Text.literal("[FiwAntiCheat] Re-checking " + name + "."), true);
+        return 1;
+    }
+
+    private static int recheckAll(CommandContext<ServerCommandSource> ctx) {
+        int sent = 0;
+        int skipped = 0;
+        for (ServerPlayerEntity player : List.copyOf(ctx.getSource().getServer().getPlayerManager().getPlayerList())) {
+            if (FiwModsApi.recheck(player) == null) sent++;
+            else skipped++;
+        }
+        String summary = "[FiwAntiCheat] Re-checking " + sent + " online player(s)"
+                + (skipped > 0 ? "; skipped " + skipped + " (exempt or already being verified)." : ".");
+        ctx.getSource().sendFeedback(() -> Text.literal(summary), true);
+        return sent;
     }
 
     private static int profile(CommandContext<ServerCommandSource> ctx) {

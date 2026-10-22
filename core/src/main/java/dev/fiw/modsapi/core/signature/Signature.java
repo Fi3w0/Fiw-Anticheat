@@ -28,20 +28,35 @@ public final class Signature {
         public List<String> packages = List.of();
     }
 
-    public boolean matches(ModEntry mod) {
-        if (match == null) return false;
+    /**
+     * Which rule hit and the reported value it hit on.
+     *
+     * @param type  {@code id}, {@code mixin}, {@code entrypoint} or {@code package}
+     * @param value the client-reported value that matched (e.g. the full package name)
+     */
+    public record Hit(String type, String value) {}
 
-        if (containsIgnoreCase(match.ids, mod.id())) return true;
+    public boolean matches(ModEntry mod) {
+        return findHit(mod) != null;
+    }
+
+    /** The first rule that matches {@code mod}, or null. */
+    public Hit findHit(ModEntry mod) {
+        if (match == null) return null;
+
+        if (containsIgnoreCase(match.ids, mod.id())) return new Hit("id", mod.id());
 
         if (match.mixins != null) {
             for (String declared : mod.markers().mixinConfigs()) {
-                if (containsIgnoreCase(match.mixins, declared)) return true;
+                if (containsIgnoreCase(match.mixins, declared)) return new Hit("mixin", declared);
             }
         }
-        if (anyPrefix(match.entrypoints, mod.markers().entrypoints())) return true;
-        if (anyPrefix(match.packages, mod.markers().packages())) return true;
+        String entrypoint = firstPrefixed(match.entrypoints, mod.markers().entrypoints());
+        if (entrypoint != null) return new Hit("entrypoint", entrypoint);
+        String pkg = firstPrefixed(match.packages, mod.markers().packages());
+        if (pkg != null) return new Hit("package", pkg);
 
-        return false;
+        return null;
     }
 
     private static boolean containsIgnoreCase(List<String> haystack, String needle) {
@@ -52,18 +67,18 @@ public final class Signature {
         return false;
     }
 
-    /** Case-insensitive exact match or descendant at a dot boundary. */
-    private static boolean anyPrefix(List<String> prefixes, List<String> values) {
-        if (prefixes == null || values == null) return false;
+    /** First value that is a case-insensitive exact match or dot-boundary descendant of a prefix. */
+    private static String firstPrefixed(List<String> prefixes, List<String> values) {
+        if (prefixes == null || values == null) return null;
         for (String value : values) {
             if (value == null) continue;
             String v = value.toLowerCase(Locale.ROOT);
             for (String prefix : prefixes) {
                 if (prefix == null || prefix.isEmpty()) continue;
                 String p = prefix.toLowerCase(Locale.ROOT);
-                if (v.equals(p) || v.startsWith(p + ".")) return true;
+                if (v.equals(p) || v.startsWith(p + ".")) return value;
             }
         }
-        return false;
+        return null;
     }
 }

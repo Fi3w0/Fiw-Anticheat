@@ -210,4 +210,41 @@ class EvaluatorTest {
         assertTrue(result.kick());
         assertEquals("inactive_resource_pack", result.detected().get(0).category());
     }
+
+    @Test
+    void detectionsSayHowTheyMatched() {
+        ModConfig cfg = new ModConfig();
+        ModEntry renamed = new ModEntry("totally-legit", "1.0", "",
+                new ModMarkers(List.of(), List.of(), List.of("net.xolt.freecam.mixin")));
+
+        var result = Evaluator.evaluate(List.of(renamed, mod("freecam")), cfg, db(), NONE);
+
+        var byPackage = result.detected().get(0);
+        assertEquals("package", byPackage.matchType());
+        assertEquals("net.xolt.freecam.mixin", byPackage.matchValue());
+        assertEquals("Freecam [freecam] matched package 'net.xolt.freecam.mixin' (id=totally-legit)",
+                byPackage.describe());
+
+        var byId = result.detected().get(1);
+        assertEquals("id", byId.matchType());
+        assertEquals("Freecam [freecam] matched id 'freecam'", byId.describe());
+
+        assertEquals("[FiwAntiCheat] Steve using: Freecam (package net.xolt.freecam.mixin), Freecam (id freecam)",
+                result.alertText("Steve"));
+    }
+
+    @Test
+    void bannedPackDetectionSaysWhichFieldMatched() {
+        ModConfig cfg = new ModConfig();
+        cfg.resource_packs.banned_packs = List.of("xray.zip");
+        cfg.resource_packs.banned_fingerprints = List.of("deadbeef");
+
+        var result = Evaluator.evaluate(List.of(mod("sodium")), List.of(
+                new ResourcePackEntry("file/a.zip", "xray.zip", "", true),
+                new ResourcePackEntry("file/b.zip", "b.zip", "DEADBEEF", true)), cfg, db(), NONE);
+
+        assertEquals("pack name", result.detected().get(0).matchType());
+        assertEquals("pack fingerprint", result.detected().get(1).matchType());
+        assertEquals("DEADBEEF", result.detected().get(1).matchValue());
+    }
 }

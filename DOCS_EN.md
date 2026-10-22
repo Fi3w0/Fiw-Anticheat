@@ -150,7 +150,7 @@ Full default config:
     "player_overrides": {},
     "escalation_rules": []
   },
-  "profiling": { "enabled": true, "max_history": 200 },
+  "profiling": { "enabled": true, "max_history": 200, "retention_days": 0 },
   "whitelist": { "require_all": true, "official_mods": [] }
 }
 ```
@@ -248,6 +248,7 @@ checks are skipped for them until it expires or is removed.
 |---|---|---|---|
 | `enabled` | bool | `true` | Record per-player mod profiles (see §9). |
 | `max_history` | int | `200` | Max change events kept per player before the oldest are trimmed. |
+| `retention_days` | int | `0` | Delete profiles of players not seen for this many days. `0` keeps them forever. Checked at server start and on `/fiwmods reload`. |
 
 ### `whitelist`
 
@@ -400,7 +401,7 @@ The companion sends mod ids, versions, SHA-256 jar fingerprints and package mark
 
 With profiling enabled, `config/fiw-mods-api/profiles/<uuid>.json` stores the player UUID/name, first/last-seen timestamps, join count, mod ids/versions, active and inactive pack names/ids/hashes, change history and recent detection timestamps used for escalation. Mod jar hashes and package markers are used during evaluation; the current profile format does not store them. A `/fiwmods snapshot` stores official mod ids/versions/hashes in `config/fiw-mods-api/config.json`. Detection and profile-change messages also appear in server logs and optional staff alerts.
 
-`profiling.enabled: false` disables ordinary mod/pack profile recording; escalation rules can still write detection timestamps. `resource_packs.log: false` disables pack profile recording and pack-ban evaluation, but does not stop the companion from reporting pack metadata. `max_history` caps change events (default 200); there is no automatic profile-file expiry. Restrict access to profiles, config, logs and backups. These files are saved by atomic replacement; if the filesystem does not support atomic moves, saving fails and keeps the prior file.
+`profiling.enabled: false` disables ordinary mod/pack profile recording; escalation rules can still write detection timestamps. `resource_packs.log: false` disables pack profile recording and pack-ban evaluation, but does not stop the companion from reporting pack metadata. `max_history` caps change events (default 200). `retention_days` (default 0 = never) deletes a player's profile file, including its escalation timestamps, once they haven't been seen for that many days; it runs at server start and on `/fiwmods reload`. Restrict access to profiles, config, logs and backups. These files are written to a temporary file first and then swapped in; storage that can't swap atomically falls back to a normal replace.
 
 ---
 
@@ -413,6 +414,8 @@ With profiling enabled, `config/fiw-mods-api/profiles/<uuid>.json` stores the pl
 | `/fiwmods reload` | Re-read `config/fiw-mods-api/config.json` and reload bundled signatures from the installed jar; no external signatures file is read |
 | `/fiwmods snapshot server` | Capture the **server's own** loaded mods as the whitelist |
 | `/fiwmods snapshot player <name>` | Capture an online player's reported mods as the whitelist |
+| `/fiwmods recheck player <name>` | Re-run the mod check on an online player without freezing them. A bad or missing reply kicks them, as on join. Skips exempt players and players already being verified. |
+| `/fiwmods recheck all` | Same for every online player, e.g. after changing the ban list and running `/fiwmods reload`. |
 | `/fiwmods profile <name>` | Show a player's grouped current mods, resource packs, and recent history |
 | `/fiwmods exempt add <player> <tier> [hours] [preset]` | Grant `<player>` an exemption tier (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). `[hours]` sets an expiry (omit or `0` for permanent); `[preset]` is required only when `<tier>` is `preset`. |
 | `/fiwmods exempt remove <player>` | Remove any exemption (tier override or legacy bypass-list entry) for `<player>` |
