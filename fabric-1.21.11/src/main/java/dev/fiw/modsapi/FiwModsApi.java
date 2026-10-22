@@ -66,6 +66,13 @@ public final class FiwModsApi implements ModInitializer {
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             if (!server.isDedicated()) return;
+            if (server.getTicks() % 10 == 0) {
+                // Snap frozen players back on the main thread; the movement mixin only drops packets.
+                for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+                    FreezeState state = engine.freezes().get(player.getUuid());
+                    if (state != null) player.requestTeleport(state.x(), state.y(), state.z());
+                }
+            }
             List<UUID> expired = engine.challenges().expired(engine.timeoutMillis());
             for (UUID uuid : expired) {
                 ServerPlayerEntity player = server.getPlayerManager().getPlayer(uuid);

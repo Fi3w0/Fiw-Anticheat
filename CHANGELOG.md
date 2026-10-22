@@ -17,6 +17,7 @@ New features on top of the 2.1.2 security fixes. The network protocol is unchang
 
 ### Fixed
 - Re-checks and `/fiwmods snapshot player` replies no longer add to the player's join count in their profile.
+- Players being verified are now snapped back from the server's main thread instead of the network thread. On Fabric and NeoForge, the old way could occasionally kick a player who rejoined quickly with `Invalid move player packet received`.
 
 ### Documentation
 - The privacy section no longer says saving fails on storage without atomic moves; since 2.1.1 it falls back to a normal replace.

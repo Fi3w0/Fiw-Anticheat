@@ -83,6 +83,13 @@ public final class FiwModsApi {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
+        if (server.getTickCount() % 10 == 0) {
+            // Snap frozen players back on the main thread; the movement mixin only drops packets.
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                FreezeState state = engine.freezes().get(player.getUUID());
+                if (state != null) player.teleportTo(state.x(), state.y(), state.z());
+            }
+        }
         List<UUID> expired = engine.challenges().expired(engine.timeoutMillis());
         for (UUID uuid : expired) {
             ServerPlayer player = server.getPlayerList().getPlayer(uuid);

@@ -1,7 +1,6 @@
 package dev.fiw.modsapi.mixin;
 
 import dev.fiw.modsapi.FiwModsApi;
-import dev.fiw.modsapi.core.freeze.FreezeState;
 import net.minecraft.network.protocol.game.ServerboundChatPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
@@ -21,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Cancels movement and interaction packets while a player is frozen awaiting
- * verification; movement attempts snap them back to the freeze position.
+ * verification. The server tick snaps frozen players back to the freeze position.
  */
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class ServerGamePacketListenerImplMixin {
@@ -35,13 +34,9 @@ public abstract class ServerGamePacketListenerImplMixin {
 
     @Inject(method = "handleMovePlayer", at = @At("HEAD"), cancellable = true)
     private void fiw$onMovePlayer(ServerboundMovePlayerPacket packet, CallbackInfo ci) {
-        if (fiw$frozen()) {
-            FreezeState state = FiwModsApi.engine().freezes().get(player.getUUID());
-            if (state != null) {
-                player.teleportTo(state.x(), state.y(), state.z());
-            }
-            ci.cancel();
-        }
+        // Runs on the network thread first: only drop the packet here. The snap-back
+        // teleport is sent from the server tick on the main thread.
+        if (fiw$frozen()) ci.cancel();
     }
 
     @Inject(method = "handleMoveVehicle", at = @At("HEAD"), cancellable = true)
