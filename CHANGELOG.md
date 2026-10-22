@@ -2,6 +2,19 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
+## [2.1.2] - Security fixes for the join check
+
+Security and bug-fix update. The network protocol is unchanged.
+
+> **⚠ Upgrade note:** use the same Fiw AntiCheat version on the server and on players' clients.
+
+### Fixed
+- A verification reply with the wrong nonce now disconnects the player. Before, it unfroze them and skipped the mod check, and the join timeout no longer applied. Replies that arrive after `timeout_seconds` are rejected with the timeout message instead of being accepted.
+- `/fiwmods snapshot player <name>` is refused while that player is still being verified on join. Before, it replaced the join check, so the player was unfrozen without a mod check and their reported mods became the whitelist.
+- An unanswered `/fiwmods snapshot player` request no longer kicks the player with the timeout message (e.g. a Bedrock or bypassed player without the companion mod).
+- Resource-pack updates from a client are limited to one every 5 seconds per player, so a client spamming them can't cause constant profile writes on the server.
+- Mod ids, versions and resource-pack names reported by clients have line breaks, control characters and `§` colour codes removed, so they can't add fake lines to the server log or fake text in `/fiwmods profile`.
+
 ## [2.1.1] - Safer saves, stricter package matching, exemption list fixes
 
 Maintenance and bug-fix update. If something breaks or behaves differently than before, please report it on the [issue tracker](https://github.com/Fi3w0/Fiw-Anticheat/issues).

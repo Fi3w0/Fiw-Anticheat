@@ -26,7 +26,6 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.UUID;
 
@@ -77,8 +76,7 @@ public final class FiwModsApi {
     public void onPlayerDisconnect(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             UUID uuid = player.getUUID();
-            engine.challenges().remove(uuid);
-            engine.freezes().unfreeze(uuid);
+            engine.forget(uuid);
         }
     }
 
@@ -113,9 +111,12 @@ public final class FiwModsApi {
         NetworkHandler.sendChallenge(player, nonce);
     }
 
-    public static void sendCaptureChallenge(ServerPlayer player) {
-        byte[] nonce = engine.challenges().create(player.getUUID(), true);
+    /** Send a snapshot-capture challenge to an already-online player (no freeze). False while a verification is pending. */
+    public static boolean sendCaptureChallenge(ServerPlayer player) {
+        byte[] nonce = engine.challenges().createCapture(player.getUUID());
+        if (nonce == null) return false;
         NetworkHandler.sendChallenge(player, nonce);
+        return true;
     }
 
     public static void handleResponse(MinecraftServer server, ServerPlayer player,
@@ -123,16 +124,26 @@ public final class FiwModsApi {
         UUID uuid = player.getUUID();
         String name = player.getName().getString();
 
-        ChallengeManager.Pending pending = engine.challenges().consume(uuid);
-        if (pending == null) {
-            engine.freezes().unfreeze(uuid);
+        // A packet still queued from a connection that has since been replaced must not
+        // consume the new connection's challenge.
+        ServerPlayer current = server.getPlayerList().getPlayer(uuid);
+        if (current == null || current.connection != player.connection) return;
+
+        ChallengeManager.Verification check =
+                engine.challenges().verify(uuid, nonceEcho, engine.timeoutMillis());
+        if (check.outcome() == ChallengeManager.Outcome.NONE) {
+            return; // no live challenge: unsolicited, duplicate, or late snapshot reply
+        }
+        if (check.outcome() != ChallengeManager.Outcome.VALID) {
+            // Fail closed: the challenge is spent, so the timeout can no longer catch this player.
+            boolean late = check.outcome() == ChallengeManager.Outcome.EXPIRED;
+            LOGGER.warn("[FiwAntiCheat] {} from {} — disconnecting",
+                    late ? "Late verification response" : "Nonce mismatch", name);
+            player.connection.disconnect(Component.literal(late
+                    ? engine.config().timeout_message : engine.config().kick_message));
             return;
         }
-        if (!MessageDigest.isEqual(pending.nonce(), nonceEcho)) {
-            LOGGER.warn("[FiwAntiCheat] Nonce mismatch from {} — ignoring response", name);
-            engine.freezes().unfreeze(uuid);
-            return;
-        }
+        ChallengeManager.Pending pending = check.pending();
 
         engine.recordProfile(uuid, name, mods, resourcePacks);
 
@@ -175,6 +186,7 @@ public final class FiwModsApi {
     public static void handleResourcePackUpdate(MinecraftServer server,
                                                 ServerPlayer player,
                                                 List<ResourcePackEntry> resourcePacks) {
+        if (!engine.allowResourcePackUpdate(player.getUUID())) return;
         ExemptionResolution resolution = resolveExemption(player);
         if (resolution.tier() == ExemptionTier.BYPASS) return;
         UUID uuid = player.getUUID();

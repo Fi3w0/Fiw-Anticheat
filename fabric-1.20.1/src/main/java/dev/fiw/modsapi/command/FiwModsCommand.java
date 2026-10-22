@@ -80,7 +80,11 @@ public final class FiwModsCommand {
             ctx.getSource().sendError(Text.literal("[FiwAntiCheat] Player '" + name + "' is not online."));
             return 0;
         }
-        FiwModsApi.sendCaptureChallenge(target);
+        if (!FiwModsApi.sendCaptureChallenge(target)) {
+            ctx.getSource().sendError(Text.literal("[FiwAntiCheat] " + name
+                    + " is still being verified. Try again in a few seconds."));
+            return 0;
+        }
         ctx.getSource().sendFeedback(
                 () -> Text.literal("[FiwAntiCheat] Requested mod snapshot from " + name + "…"), true);
         return 1;

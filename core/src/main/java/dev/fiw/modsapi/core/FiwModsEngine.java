@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -33,9 +34,13 @@ import java.util.stream.Collectors;
  */
 public final class FiwModsEngine {
 
+    /** Minimum gap between processed resource-pack updates per player (the companion re-scans every 10 s). */
+    static final long PACK_UPDATE_MIN_INTERVAL_MS = 5_000L;
+
     private final Platform platform;
     private final ChallengeManager challenges = new ChallengeManager();
     private final FreezeTracker freezes = new FreezeTracker();
+    private final Map<UUID, Long> lastPackUpdate = new ConcurrentHashMap<>();
 
     private volatile ModConfig config;
     private volatile SignatureDatabase signatures;
@@ -73,6 +78,31 @@ public final class FiwModsEngine {
 
     public long timeoutMillis() {
         return Math.max(1, config.timeout_seconds) * 1000L;
+    }
+
+    /** Drop all per-connection state for a player that left. */
+    public void forget(UUID uuid) {
+        challenges.remove(uuid);
+        freezes.unfreeze(uuid);
+        lastPackUpdate.remove(uuid);
+    }
+
+    /**
+     * Whether a resource-pack-only update from this player should be processed now.
+     * Each processed update rewrites the player's profile on disk, so a client spamming
+     * the channel is throttled to one update per {@link #PACK_UPDATE_MIN_INTERVAL_MS}.
+     */
+    public boolean allowResourcePackUpdate(UUID uuid) {
+        long now = System.currentTimeMillis();
+        boolean[] allowed = {false};
+        lastPackUpdate.compute(uuid, (k, last) -> {
+            if (last == null || now - last >= PACK_UPDATE_MIN_INTERVAL_MS) {
+                allowed[0] = true;
+                return now;
+            }
+            return last;
+        });
+        return allowed[0];
     }
 
     /** Whether a player (by name + uuid) is exempt via the legacy bypass list. */

@@ -81,6 +81,8 @@ All work happens **once per join**, never per tick.
    - KICK → disconnect with a generic message; the **real** reason/mod is logged
      to console and (optionally) sent to online staff.
    - No reply within `timeout_seconds` → kicked with the timeout message.
+   - A reply with the wrong nonce → kicked; a reply after `timeout_seconds` →
+     kicked with the timeout message. Each nonce works once.
 4. **Exemptions** (Floodgate Bedrock + bypass list) skip the whole process.
 
 After the join report, the companion client periodically re-scans resource packs
@@ -306,6 +308,8 @@ kicked. Best for a locked modpack server or a controlled launcher. Workflow:
 1. Set `"mode": "whitelist"`.
 2. Join with the official pack installed and run `/fiwmods snapshot player <you>`
    (or `/fiwmods snapshot server` to capture the server's own mods).
+   The player command is refused while that player is still being verified on
+   join; wait until they can move, then run it.
 3. The official set (id + version + fingerprint) is written and reloaded.
 4. Re-snapshot whenever the pack changes.
 

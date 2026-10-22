@@ -133,6 +133,35 @@ class FiwModsEngineTest {
                 "an existing admin grant must not be overwritten by auto-escalation");
     }
 
+    @Test
+    void resourcePackUpdatesAreThrottledPerPlayer(@TempDir Path dir) {
+        FiwModsEngine engine = engine(dir);
+        UUID a = UUID.randomUUID();
+        UUID b = UUID.randomUUID();
+
+        assertTrue(engine.allowResourcePackUpdate(a));
+        assertFalse(engine.allowResourcePackUpdate(a));
+        assertFalse(engine.allowResourcePackUpdate(a));
+        // other players have their own budget
+        assertTrue(engine.allowResourcePackUpdate(b));
+
+        // leaving resets the player's state
+        engine.forget(a);
+        assertTrue(engine.allowResourcePackUpdate(a));
+    }
+
+    @Test
+    void forgetClearsChallengeAndFreeze(@TempDir Path dir) {
+        FiwModsEngine engine = engine(dir);
+        UUID a = UUID.randomUUID();
+        engine.challenges().create(a, false);
+        engine.freezes().freeze(a, new dev.fiw.modsapi.core.freeze.FreezeState(0, 0, 0, 0, 0, 0));
+
+        engine.forget(a);
+        assertFalse(engine.challenges().isPending(a));
+        assertFalse(engine.freezes().isFrozen(a));
+    }
+
     private static final class TestPlatform implements Platform {
         private final Path configDir;
 

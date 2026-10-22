@@ -12,9 +12,11 @@ public record ResourcePackEntry(String id, String name, String fingerprint, bool
         implements Comparable<ResourcePackEntry> {
 
     public ResourcePackEntry {
+        id = ClientText.clean(id);
         if (id == null || id.isBlank()) throw new IllegalArgumentException("resource pack id cannot be blank");
+        name = ClientText.clean(name);
         name = name == null || name.isBlank() ? id : name;
-        fingerprint = fingerprint == null ? "" : fingerprint;
+        fingerprint = fingerprint == null ? "" : ClientText.clean(fingerprint);
     }
 
     @Override

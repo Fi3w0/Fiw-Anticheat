@@ -83,6 +83,9 @@ Todo el trabajo ocurre **una vez por entrada**, nunca por tick.
      en consola y (opcionalmente) se avisa al staff conectado.
    - Sin respuesta dentro de `timeout_seconds` -> expulsado con el mensaje de
      timeout.
+   - Respuesta con un nonce incorrecto -> expulsado; respuesta despues de
+     `timeout_seconds` -> expulsado con el mensaje de timeout. Cada nonce sirve
+     una sola vez.
 4. **Exenciones** (Bedrock por Floodgate + lista de bypass) saltan todo el proceso.
 
 Despues del reporte de entrada, el cliente companero vuelve a escanear resource
@@ -313,6 +316,8 @@ Ideal para un servidor de modpack cerrado o un launcher controlado. Flujo:
 1. Pon `"mode": "whitelist"`.
 2. Entra con el pack oficial instalado y ejecuta `/fiwmods snapshot player <tu>`
    (o `/fiwmods snapshot server` para capturar los mods del propio servidor).
+   El comando de jugador se rechaza mientras ese jugador sigue en la
+   verificacion de entrada; espera a que pueda moverse y ejecutalo.
 3. El set oficial (id + version + fingerprint) se escribe y se recarga.
 4. Vuelve a hacer snapshot cada vez que cambie el pack.
 

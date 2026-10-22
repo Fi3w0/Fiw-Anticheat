@@ -13,8 +13,9 @@ public record ModEntry(String id, String version, String fingerprint, ModMarkers
 
     public ModEntry {
         if (id == null) throw new IllegalArgumentException("mod id cannot be null");
-        version = version == null ? "" : version;
-        fingerprint = fingerprint == null ? "" : fingerprint;
+        id = ClientText.clean(id);
+        version = version == null ? "" : ClientText.clean(version);
+        fingerprint = fingerprint == null ? "" : ClientText.clean(fingerprint);
         markers = markers == null ? ModMarkers.EMPTY : markers;
     }
 
