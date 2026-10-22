@@ -2,11 +2,20 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
-## [2.2.0] - Re-checks, clearer detections, profile retention
+## [2.2.0] - Security fixes, re-checks, clearer detections
 
-New features on top of the 2.1.2 security fixes. The network protocol is unchanged.
+Security and feature update. The network protocol is unchanged. Updating is recommended for every server.
 
 > **⚠ Upgrade note:** use the same Fiw AntiCheat version on the server and on players' clients.
+
+### Fixed
+- **Security:** a verification reply with the wrong nonce now disconnects the player. Before, it unfroze them and skipped the mod check, and the join timeout no longer applied. Replies that arrive after `timeout_seconds` are rejected with the timeout message instead of being accepted.
+- **Security:** `/fiwmods snapshot player <name>` is refused while that player is still being verified on join. Before, it replaced the join check, so the player was unfrozen without a mod check and their reported mods became the whitelist.
+- Resource-pack updates from a client are limited to one every 5 seconds per player, so a client spamming them can't cause constant profile writes on the server.
+- Mod ids, versions and resource-pack names reported by clients have line breaks, control characters and `§` colour codes removed, so they can't add fake lines to the server log or fake text in `/fiwmods profile`.
+- Players being verified are now snapped back from the server's main thread instead of the network thread. On Fabric and NeoForge, the old way could occasionally kick a player who rejoined quickly with `Invalid move player packet received`.
+- An unanswered `/fiwmods snapshot player` request no longer kicks the player with the timeout message (e.g. a Bedrock or bypassed player without the companion mod).
+- Re-checks and `/fiwmods snapshot player` replies no longer add to the player's join count in their profile.
 
 ### Added
 - `/fiwmods recheck player <name>` and `/fiwmods recheck all` re-run the mod check on online players without freezing them, so a changed ban list applies without waiting for players to rejoin. A bad or missing reply kicks, as on join. Exempt players and players already being verified are skipped.
@@ -15,25 +24,8 @@ New features on top of the 2.1.2 security fixes. The network protocol is unchang
 ### Changed
 - Console lines and staff alerts now say how a mod or pack was detected and on which value, e.g. `Freecam (package net.xolt.freecam.mixin)` or `X-ray pack (pack fingerprint …)`. Console lines also show the reported mod id when it differs.
 
-### Fixed
-- Re-checks and `/fiwmods snapshot player` replies no longer add to the player's join count in their profile.
-- Players being verified are now snapped back from the server's main thread instead of the network thread. On Fabric and NeoForge, the old way could occasionally kick a player who rejoined quickly with `Invalid move player packet received`.
-
 ### Documentation
 - The privacy section no longer says saving fails on storage without atomic moves; since 2.1.1 it falls back to a normal replace.
-
-## [2.1.2] - Security fixes for the join check
-
-Security and bug-fix update. The network protocol is unchanged.
-
-> **⚠ Upgrade note:** use the same Fiw AntiCheat version on the server and on players' clients.
-
-### Fixed
-- A verification reply with the wrong nonce now disconnects the player. Before, it unfroze them and skipped the mod check, and the join timeout no longer applied. Replies that arrive after `timeout_seconds` are rejected with the timeout message instead of being accepted.
-- `/fiwmods snapshot player <name>` is refused while that player is still being verified on join. Before, it replaced the join check, so the player was unfrozen without a mod check and their reported mods became the whitelist.
-- An unanswered `/fiwmods snapshot player` request no longer kicks the player with the timeout message (e.g. a Bedrock or bypassed player without the companion mod).
-- Resource-pack updates from a client are limited to one every 5 seconds per player, so a client spamming them can't cause constant profile writes on the server.
-- Mod ids, versions and resource-pack names reported by clients have line breaks, control characters and `§` colour codes removed, so they can't add fake lines to the server log or fake text in `/fiwmods profile`.
 
 ### Notes
 - Thanks to Mickynuts ([@araminimichael](https://github.com/araminimichael)) for privately reporting the wrong-nonce issue.
