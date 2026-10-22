@@ -15,6 +15,9 @@ Security and bug-fix update. The network protocol is unchanged.
 - Resource-pack updates from a client are limited to one every 5 seconds per player, so a client spamming them can't cause constant profile writes on the server.
 - Mod ids, versions and resource-pack names reported by clients have line breaks, control characters and `§` colour codes removed, so they can't add fake lines to the server log or fake text in `/fiwmods profile`.
 
+### Notes
+- Thanks to Mickynuts ([@araminimichael](https://github.com/araminimichael)) for privately reporting the wrong-nonce issue.
+
 ## [2.1.1] - Safer saves, stricter package matching, exemption list fixes
 
 Maintenance and bug-fix update. If something breaks or behaves differently than before, please report it on the [issue tracker](https://github.com/Fi3w0/Fiw-Anticheat/issues).
