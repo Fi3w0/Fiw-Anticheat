@@ -118,11 +118,14 @@ Ejemplo de configuracion generada:
   },
   "exemptions": {
     "floodgate_auto": true,
-    "bypass_players": []
+    "bypass_players": [],
+    "player_overrides": {},
+    "escalation_rules": []
   },
   "profiling": {
     "enabled": true,
-    "max_history": 200
+    "max_history": 200,
+    "retention_days": 0
   },
   "whitelist": {
     "require_all": true,
@@ -151,8 +154,11 @@ Opciones principales:
 | `resource_packs.banned_fingerprints` | Huellas SHA-256 exactas de packs a marcar aunque sean renombrados. |
 | `exemptions.floodgate_auto` | Exime automaticamente jugadores Bedrock detectados por Floodgate. |
 | `exemptions.bypass_players` | Nombres o UUIDs que saltan la verificacion. |
+| `exemptions.player_overrides` | Niveles de exencion por jugador. Se gestionan con `/fiwmods exempt add\|remove\|list`. |
+| `exemptions.escalation_rules` | Reglas que aplican automaticamente un nivel tras detecciones repetidas. |
 | `profiling.enabled` | Guarda perfiles de mods por jugador. |
 | `profiling.max_history` | Maximo de eventos historicos guardados por perfil. |
+| `profiling.retention_days` | Borra los perfiles de jugadores que no se han visto en esa cantidad de dias. `0` los guarda para siempre. |
 | `whitelist.require_all` | En whitelist, exige que todos los mods oficiales esten presentes. |
 | `whitelist.official_mods` | Snapshot oficial del modpack. Lo rellena `/fiwmods snapshot`. |
 
@@ -282,6 +288,13 @@ Todos los comandos requieren nivel de permiso 4.
 | `/fiwmods snapshot server` | Guarda los mods cargados en el servidor como whitelist oficial. |
 | `/fiwmods snapshot player <nombre>` | Pide al jugador online su lista de mods y la guarda como whitelist oficial. |
 | `/fiwmods profile <nombre>` | Muestra mods, resource packs y cambios recientes. |
+| `/fiwmods recheck player <nombre>` | Vuelve a revisar los mods de un jugador conectado sin congelarlo. Una respuesta incorrecta o ausente lo expulsa, igual que al entrar. |
+| `/fiwmods recheck all` | Lo mismo para todos los jugadores conectados, por ejemplo despues de cambiar la lista de bans. |
+| `/fiwmods exempt add <jugador> <nivel> [horas] [preset]` | Otorga un nivel de exencion (`bypass`, `silent`, `monitor`, `quiet_kick`, `preset`, `force_block`). |
+| `/fiwmods exempt remove <jugador>` | Elimina cualquier exencion de ese jugador. |
+| `/fiwmods exempt list` | Lista las exenciones vigentes; las expiraciones se muestran en UTC. |
+
+La referencia completa de niveles, reglas de escalado y opciones esta en [DOCS_ES.md](../DOCS_ES.md).
 
 ## Perfiles de jugadores
 

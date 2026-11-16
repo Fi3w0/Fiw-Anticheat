@@ -98,7 +98,7 @@ All work happens **once per join**, never per tick.
 
 After the join report, the companion client periodically re-scans resource packs
 while online. If the active/inactive pack set changes, it sends a pack-only
-update so the profile can record added, enabled, disabled, removed, and changed
+update so the profile can record added, enabled, disabled, removed, and updated
 pack events during the same session.
 
 The per-join nonce is **anti-replay / session-bound** (an off-session third

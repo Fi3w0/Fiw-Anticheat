@@ -154,7 +154,8 @@ The server receives each player's mod ids, versions, SHA-256 hashes and package 
 
 ## Documentation
 
-Full English documentation ships with the mod in `DOCS_EN.md`: the join
+Full English documentation is in [DOCS_EN.md](https://github.com/Fi3w0/Fiw-Anticheat/blob/main/DOCS_EN.md)
+(Spanish: [DOCS_ES.md](https://github.com/Fi3w0/Fiw-Anticheat/blob/main/DOCS_ES.md)): the join
 protocol, complete config reference, both modes, the signature database,
 commands, per-player profiles, and troubleshooting.
 
@@ -163,16 +164,14 @@ commands, per-player profiles, and troubleshooting.
 ## License
 
 Fiw AntiCheat is released under the [Fiw AntiCheat License (Attribution,
-Non-Commercial)](LICENSE). You are free to use, modify, fork, and redistribute
+Non-Commercial)](https://github.com/Fi3w0/Fiw-Anticheat/blob/main/LICENSE). You are free to use, modify, fork, and redistribute
 it — including modified builds — as long as you give clear, visible credit to the
 original creator (**Fi3w0**) with a link back and keep existing notices intact.
 You **may not sell it** or any fork without written permission (running it on a
 server, even a monetized one, is fine). Fi3w0 retains authorship of the original
 work.
 
-Contact: Discord `fi3w0`.
-
-Contact  me: @Fi3w0 on Github/Discord
+Contact: @Fi3w0 on GitHub or Discord (`fi3w0`).
 
 ---
 
