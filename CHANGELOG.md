@@ -17,6 +17,7 @@ New Minecraft versions and fixes for players who join without the companion. The
 - NeoForge: `/fiwmods snapshot player <name>` on a player without the companion now says they don't have Fiw AntiCheat installed instead of trying to capture.
 
 ### Fixed
+- Fabric 1.21.11: `/fiwmods profile <name>` answered "Unknown player" for players who were offline when the server runs in offline mode. It now finds every player who has joined before.
 - NeoForge 1.21.1 and 1.21.11: a player joining without the companion caused two errors in the server log and was disconnected with Minecraft's "invalid player data" message instead of `timeout_message`. They now stay frozen and are kicked with `timeout_message` after `timeout_seconds`, like on Fabric.
 
 ## [2.2.0] - Security fixes, re-checks, clearer detections

@@ -14,6 +14,7 @@ import dev.fiw.modsapi.core.profile.ProfileView;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.command.permission.LeveledPermissionPredicate;
 import net.minecraft.command.permission.PermissionLevel;
+import net.minecraft.server.PlayerConfigEntry;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -153,6 +154,10 @@ public final class FiwModsCommand {
     private static Optional<UUID> findUuid(ServerCommandSource source, String name) {
         ServerPlayerEntity online = source.getServer().getPlayerManager().getPlayer(name);
         if (online != null) return Optional.of(online.getUuid());
+        // The name cache knows every player who has joined, also on offline-mode servers, where
+        // the session-server lookup below finds nothing for offline players.
+        Optional<PlayerConfigEntry> cached = source.getServer().getApiServices().nameToIdCache().findByName(name);
+        if (cached.isPresent()) return cached.map(PlayerConfigEntry::id);
         Optional<GameProfile> profile = source.getServer().getApiServices()
                 .profileResolver()
                 .getProfileByName(name);
