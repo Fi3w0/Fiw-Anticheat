@@ -1,5 +1,6 @@
 plugins {
-    id 'net.minecraftforge.gradle' version '[6.0.24,6.2)'
+    id 'java'
+    id 'net.neoforged.moddev.legacyforge'
 }
 
 evaluationDependsOn(':core')
@@ -24,33 +25,21 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-minecraft {
-    mappings channel: 'official', version: project.minecraft_version
-
+legacyForge {
+    version = "${project.minecraft_version}-${project.forge_version}"
     runs {
-        client {
-            workingDirectory project.file('run')
-            mods {
-                "fiw_mods_api" {
-                    source sourceSets.main
-                    source project(':core').sourceSets.main
-                }
-            }
-        }
-        server {
-            workingDirectory project.file('run-server')
-            mods {
-                "fiw_mods_api" {
-                    source sourceSets.main
-                    source project(':core').sourceSets.main
-                }
-            }
+        client { client() }
+        server { server() }
+    }
+    mods {
+        "fiw_mods_api" {
+            sourceSet sourceSets.main
+            sourceSet project(':core').sourceSets.main
         }
     }
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${project.minecraft_version}-${project.forge_version}"
     implementation project(':core')
 }
 
@@ -68,5 +57,3 @@ jar {
     }
 }
 
-// ForgeGradle remaps the dev jar to SRG for production.
-tasks.named('jar') { finalizedBy 'reobfJar' }

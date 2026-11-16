@@ -1,5 +1,13 @@
-// Root project: no plugins applied here. Each module configures itself.
-// :core is plain Java; :fabric uses Fabric Loom; :neoforge uses NeoForge ModDevGradle.
+// Plugin versions live here, once; each module applies the one it needs without a version.
+// :core is plain Java. :fabric-26.1.2 uses Loom without remapping (26.x ships unobfuscated);
+// older :fabric-* use Loom's remapping plugin; :neoforge-* use ModDevGradle;
+// :forge-1.20.1 uses ModDevGradle's legacy Forge support.
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version '1.16.3' apply false
+    id 'net.fabricmc.fabric-loom' version '1.16.3' apply false
+    id 'net.neoforged.moddev' version '2.0.141' apply false
+    id 'net.neoforged.moddev.legacyforge' version '2.0.141' apply false
+}
 
 allprojects {
     group = project.maven_group
