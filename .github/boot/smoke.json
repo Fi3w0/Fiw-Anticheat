@@ -1,0 +1,9 @@
+{
+  "commands": [
+    "fiwmods reload"
+  ],
+  "expected": [
+    "[FiwAntiCheat] Ready (",
+    "Config + signatures reloaded."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "fiw-anticheat-player-verification",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "mineflayer": "4.39.0",
+    "minecraft-protocol": "1.68.0",
+    "minecraft-data": "3.119.0"
+  }
+}

@@ -48,3 +48,9 @@ CLAUDE.md
 /run*/config/
 **/profiles/
 whitelist.json
+# Gameplay-check and release tooling output
+node_modules/
+__pycache__/
+*.py[cod]
+/release/
+/RELEASE_NOTES.md
