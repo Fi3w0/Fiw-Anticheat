@@ -1,145 +1,66 @@
-name: release
+name: Release
 
-# Manual fallback — run from the Actions tab if the auto-publish in build.yml
-# failed and you need to re-publish a specific tag.
+# Recovery path: rebuilds, re-verifies and (re)publishes one version. Normal releases happen
+# in Auto release when a new version lands on main; use this only when that run failed.
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to publish (e.g. v2.0.2)'
+        description: Tag or version to publish, for example v1.2.0 or 1.2.0
         required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  release:
+  resolve:
+    name: Resolve version
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 5
+    outputs:
+      ref: ${{ steps.version.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the requested version
+        id: version
+        env:
+          REQUESTED: ${{ inputs.tag || github.ref_name }}
+        run: bash .github/scripts/resolve-release.sh
+
+  # Same build and per-target gameplay checks as every push.
+  build:
+    needs: resolve
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ needs.resolve.outputs.ref }}
+
+  publish:
+    name: Publish to Modrinth and GitHub
+    needs: [resolve, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ needs.resolve.outputs.ref }}
 
-      - name: Set up JDK 17 + 21
-        uses: actions/setup-java@v6
+      - uses: actions/download-artifact@v8
         with:
-          distribution: temurin
-          java-version: |
-            17
-            21
+          name: jars
+          path: release
 
-      - name: Setup Gradle (with caching)
-        uses: gradle/actions/setup-gradle@v5
-
-      - name: Build all targets
-        run: ./gradlew build --stacktrace
+      - name: Publish the verified version
         env:
-          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
-
-      - name: Collect loader jars
-        run: |
-          mkdir -p release
-          # production jars only: drop sources/dev jars and the internal core library
-          find . -path '*/build/libs/*.jar' \
-            ! -name '*-sources.jar' ! -name '*-dev.jar' ! -name '*-shadow.jar' \
-            ! -name '*core*.jar' -exec cp -v {} release/ \;
-          echo "--- release contents ---"
-          ls -la release
-
-      - name: Extract changelog section for this tag
-        run: |
-          VERSION="${{ inputs.tag }}"
-          VERSION="${VERSION#v}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          awk -v ver="$VERSION" '
-            /^## \[/ { if (p) exit; if ($0 ~ ("^## \\[" ver "\\]")) p=1 }
-            p { print }
-          ' CHANGELOG.md > RELEASE_NOTES.md
-          if [ ! -s RELEASE_NOTES.md ]; then
-            echo "Fiw AntiCheat $VERSION" > RELEASE_NOTES.md
-          fi
-          echo "--- release notes ---"; cat RELEASE_NOTES.md
-
-      - name: Read release notes for Modrinth
-        id: relnotes
-        run: |
-          {
-            echo 'content<<CHANGELOG_EOF'
-            cat RELEASE_NOTES.md
-            echo CHANGELOG_EOF
-          } >> $GITHUB_OUTPUT
-
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ inputs.tag }}
-          files: release/*.jar
-          body_path: RELEASE_NOTES.md
-          fail_on_unmatched_files: true
-
-      - name: Publish to Modrinth
-        env:
+          GH_TOKEN: ${{ github.token }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-          CHANGELOG: ${{ steps.relnotes.outputs.content }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$CHANGELOG" > /tmp/changelog.txt
-
-          publish() {
-            local file="$1" game_ver="$2" loader="$3"
-            if [[ ! -f "$file" ]]; then
-              echo "::error file=$file::Missing jar for Modrinth publish"
-              exit 1
-            fi
-            python3 - "$VERSION" "$game_ver" "$loader" <<'PYEOF'
-          import json, sys, pathlib
-          ver, game_ver, loader = sys.argv[1], sys.argv[2], sys.argv[3]
-          changelog = pathlib.Path('/tmp/changelog.txt').read_text()
-          deps = [{'project_id': 'P7dR8mSH', 'dependency_type': 'required'}] if loader == 'fabric' else []
-          payload = json.dumps({
-            'name': f'Fiw AntiCheat {ver} ({loader} {game_ver})',
-            'version_number': ver,
-            'changelog': changelog,
-            'dependencies': deps,
-            'game_versions': [game_ver],
-            'version_type': 'release',
-            'loaders': [loader],
-            'featured': False,
-            'project_id': 'BUXFUwPg',  # actual Modrinth project id; the slug "fiw-anticheat" is rejected here (base62 field, no hyphens allowed)
-            'file_parts': ['file']
-          })
-          pathlib.Path('/tmp/modrinth_data.json').write_text(payload)
-          PYEOF
-            http_code=$(curl -sS -o /tmp/modrinth_response.json -w '%{http_code}' \
-              -H "Authorization: $MODRINTH_TOKEN" \
-              -F "data=</tmp/modrinth_data.json;type=application/json" \
-              -F "file=@$file" \
-              "https://api.modrinth.com/v2/version")
-            if [[ "$http_code" -ge 400 ]]; then
-              echo "::error::Modrinth publish failed for $file ($loader $game_ver) — HTTP $http_code: $(cat /tmp/modrinth_response.json)"
-              exit 1
-            fi
-            echo " -> published $file ($loader $game_ver)"
-          }
-          publish "release/fiw-anticheat-fabric-1.20.1-${VERSION}.jar"   "1.20.1"  "fabric"
-          publish "release/fiw-anticheat-forge-1.20.1-${VERSION}.jar"    "1.20.1"  "forge"
-          publish "release/fiw-anticheat-fabric-1.21.1-${VERSION}.jar"   "1.21.1"  "fabric"
-          publish "release/fiw-anticheat-neoforge-1.21.1-${VERSION}.jar" "1.21.1"  "neoforge"
-          publish "release/fiw-anticheat-fabric-1.21.11-${VERSION}.jar"  "1.21.11" "fabric"
-          publish "release/fiw-anticheat-neoforge-1.21.11-${VERSION}.jar" "1.21.11" "neoforge"
-
-      - name: Sync project description to Modrinth
-        env:
-          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: |
-          python3 -c "
-          import json, pathlib
-          body = pathlib.Path('MODRINTH.md').read_text()
-          pathlib.Path('/tmp/modrinth_project.json').write_text(json.dumps({'body': body}))
-          "
-          curl -sf -X PATCH "https://api.modrinth.com/v2/project/fiw-anticheat" \
-            -H "Authorization: $MODRINTH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d @/tmp/modrinth_project.json
-          echo "Description synced."
+        run: bash .github/scripts/publish-release.sh recover

@@ -1,0 +1,48 @@
+name: Auto release
+
+# Publishes a new version once Build succeeded for a push to main. The jars are the exact ones
+# Build produced and verified; nothing is rebuilt here. A version that already has a tag is
+# left alone.
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to Modrinth and GitHub
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: jars
+          path: release
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Publish the verified version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: bash .github/scripts/publish-release.sh auto
