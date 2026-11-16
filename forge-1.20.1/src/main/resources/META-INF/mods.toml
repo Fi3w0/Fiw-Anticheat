@@ -1,6 +1,6 @@
 modLoader = "javafml"
 loaderVersion = "[47,)"
-license = "All Rights Reserved"
+license = "Fiw AntiCheat License (Attribution, Non-Commercial)"
 issueTrackerURL = ""
 
 [[mods]]

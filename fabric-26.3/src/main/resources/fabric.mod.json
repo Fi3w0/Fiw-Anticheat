@@ -5,7 +5,7 @@
   "name": "Fiw AntiCheat",
   "description": "Professional mod verification and admin anti-cheat enforcement: blacklist unfair mods, enforce modpacks, and inspect player mod/resource-pack profiles.",
   "authors": ["Fiw"],
-  "license": "All Rights Reserved",
+  "license": "Fiw AntiCheat License (Attribution, Non-Commercial)",
   "icon": "icon.png",
   "environment": "*",
   "entrypoints": {
