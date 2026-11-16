@@ -13,5 +13,16 @@ jar="$(jar_path "$module" "$(mod_version)")"
 if [ -n "${2:-}" ]; then
   jar="$2/$(basename "$jar")"
 fi
+# The headless client cannot join every Minecraft version yet (see NO_CLIENT_MINECRAFT in
+# targets.sh). Those targets still boot the production jar twice and run the console checks.
+minecraft=""
+for target in "${TARGETS[@]}"; do
+  read -r name _ version <<< "$target"
+  if [ "$name" = "$module" ]; then minecraft="$version"; fi
+done
+if [[ " ${NO_CLIENT_MINECRAFT:-} " == *" $minecraft "* ]]; then
+  echo "::notice::$module: no test client for Minecraft $minecraft yet; running the boot and console checks only"
+  exec python3 .github/scripts/smoke-test.py "$module" "$jar" --suite-file .github/boot/smoke.json
+fi
 exec python3 .github/scripts/smoke-test.py "$module" "$jar" \
   --player-script "$PLAYER_SCRIPT" --player-phases "$PLAYER_PHASES"
