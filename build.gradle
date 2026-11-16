@@ -1,5 +1,5 @@
 // Plugin versions live here, once; each module applies the one it needs without a version.
-// :core is plain Java. :fabric-26.1.2 uses Loom without remapping (26.x ships unobfuscated);
+// :core is plain Java. :fabric-26.1.2 and :fabric-26.3 use Loom without remapping (26.x ships unobfuscated);
 // older :fabric-* use Loom's remapping plugin; :neoforge-* use ModDevGradle;
 // :forge-1.20.1 uses ModDevGradle's legacy Forge support.
 plugins {
