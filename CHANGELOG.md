@@ -2,6 +2,23 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
+## [2.2.1] - Minecraft 1.21.8 and 26.1.2, Forge and NeoForge join fixes
+
+New Minecraft versions and fixes for players who join without the companion. The network protocol is unchanged: a 2.2.1 server and 2.2.0 companions for the same Minecraft version still work together. Updating the server and players' clients together is still recommended.
+
+> **⚠ Upgrade note (Forge 1.20.1):** players without the companion, including vanilla clients, are no longer refused at login with Forge's "This server has mods that require Forge to be installed on the client" message. They can now connect, stay frozen, and are kicked with `timeout_message` after `timeout_seconds`, like on Fabric and NeoForge.
+
+### Added
+- Minecraft 1.21.8 on Fabric and NeoForge (NeoForge 21.8.x, Java 21).
+- Minecraft 26.1.2 on Fabric (Java 25, Fabric API for 26.1.2). Minecraft 26.1 sends attacks in their own packet; players being verified can't attack there either, the same protection as on the other versions.
+
+### Changed
+- Forge 1.20.1: a player with the companion installed can now join servers that don't run Fiw AntiCheat. Before, Forge refused the connection.
+- NeoForge: `/fiwmods snapshot player <name>` on a player without the companion now says they don't have Fiw AntiCheat installed instead of trying to capture.
+
+### Fixed
+- NeoForge 1.21.1 and 1.21.11: a player joining without the companion caused two errors in the server log and was disconnected with Minecraft's "invalid player data" message instead of `timeout_message`. They now stay frozen and are kicked with `timeout_message` after `timeout_seconds`, like on Fabric.
+
 ## [2.2.0] - Security fixes, re-checks, clearer detections
 
 Security and feature update. The network protocol is unchanged. Updating is recommended for every server.
