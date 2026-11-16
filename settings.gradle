@@ -18,6 +18,7 @@ rootProject.name = 'fiw-anticheat'
 
 include 'core'
 include 'fabric-26.1.2'
+include 'neoforge-26.1.2'
 include 'fabric-1.20.1'
 include 'fabric-1.21.1'
 include 'neoforge-1.21.1'
