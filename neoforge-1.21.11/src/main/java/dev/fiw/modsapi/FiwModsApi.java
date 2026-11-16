@@ -116,7 +116,10 @@ public final class FiwModsApi {
                 player.getYRot(), player.getXRot(), System.currentTimeMillis());
         engine.freezes().freeze(uuid, state);
         byte[] nonce = engine.challenges().create(uuid, capture);
-        NetworkHandler.sendChallenge(player, nonce);
+        if (!NetworkHandler.sendChallenge(player, nonce)) {
+            LOGGER.info("[FiwAntiCheat] {} has no Fiw AntiCheat companion; they are kicked when verification times out",
+                    player.getName().getString());
+        }
     }
 
     /** Send a snapshot-capture challenge to an already-online player (no freeze). False while a verification is pending. */

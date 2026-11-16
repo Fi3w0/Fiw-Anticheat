@@ -12,6 +12,7 @@ import dev.fiw.modsapi.core.exemption.ExemptionView;
 import dev.fiw.modsapi.core.model.ModEntry;
 import dev.fiw.modsapi.core.profile.PlayerProfile;
 import dev.fiw.modsapi.core.profile.ProfileView;
+import dev.fiw.modsapi.net.NetworkHandler;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -82,6 +83,11 @@ public final class FiwModsCommand {
         ServerPlayer target = ctx.getSource().getServer().getPlayerList().getPlayerByName(name);
         if (target == null) {
             ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] Player '" + name + "' is not online."));
+            return 0;
+        }
+        if (!NetworkHandler.hasCompanion(target)) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] " + name
+                    + " does not have Fiw AntiCheat installed, so there is nothing to capture."));
             return 0;
         }
         if (!FiwModsApi.sendCaptureChallenge(target)) {

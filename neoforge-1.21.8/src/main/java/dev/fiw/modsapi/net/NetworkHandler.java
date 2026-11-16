@@ -200,8 +200,24 @@ public final class NetworkHandler {
         }
     }
 
-    public static void sendChallenge(ServerPlayer player, byte[] nonce) {
-        PacketDistributor.sendToPlayer(player, new ChallengePayload(nonce));
+    /** Whether the player's client has the companion, i.e. can receive the challenge at all. */
+    public static boolean hasCompanion(ServerPlayer player) {
+        return player.connection.hasChannel(ChallengePayload.TYPE);
+    }
+
+    /**
+     * Sends the challenge; false when the client cannot receive it. NeoForge throws when a payload
+     * goes to a client that never declared the channel (any client without the companion), so such
+     * a player is not sent anything: they stay frozen and the normal timeout kicks them.
+     */
+    public static boolean sendChallenge(ServerPlayer player, byte[] nonce) {
+        if (!hasCompanion(player)) return false;
+        try {
+            PacketDistributor.sendToPlayer(player, new ChallengePayload(nonce));
+            return true;
+        } catch (UnsupportedOperationException e) {
+            return false;
+        }
     }
 
     private static List<ResourcePackEntry> collectResourcePacks() {
