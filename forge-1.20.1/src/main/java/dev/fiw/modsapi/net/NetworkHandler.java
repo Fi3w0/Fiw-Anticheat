@@ -43,8 +43,11 @@ public final class NetworkHandler {
     private static final SimpleChannel CHANNEL = NetworkRegistry.ChannelBuilder
             .named(new ResourceLocation(FiwModsApi.MOD_ID, "main"))
             .networkProtocolVersion(() -> PROTOCOL)
-            .clientAcceptedVersions(PROTOCOL::equals)
-            .serverAcceptedVersions(PROTOCOL::equals)
+            // Clients without the companion may join; with no reply they are kicked by the normal
+            // verification timeout, as on Fabric and NeoForge, instead of Forge's generic refusal.
+            // Clients with the companion may also join servers that don't run Fiw AntiCheat.
+            .clientAcceptedVersions(NetworkRegistry.acceptMissingOr(PROTOCOL))
+            .serverAcceptedVersions(NetworkRegistry.acceptMissingOr(PROTOCOL))
             .simpleChannel();
 
     private NetworkHandler() {}
