@@ -38,6 +38,8 @@ el **unico jar** que corresponde al loader y la version de Minecraft del servido
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-<version>.jar` |
 | 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-<version>.jar` |
 | 26.1.2 | NeoForge | 25 | `fiw-anticheat-neoforge-26.1.2-<version>.jar` |
+| 26.3 | Fabric | 25 | `fiw-anticheat-fabric-26.3-<version>.jar` |
+| 26.3 | NeoForge | 25 | `fiw-anticheat-neoforge-26.3-<version>.jar` |
 
 NeoForge no publica una build de Minecraft **1.20.1** en su Maven actual (la mas
 antigua es 1.20.2), asi que el target 1.20.1 de la familia Forge usa
@@ -51,11 +53,11 @@ Actualiza el servidor y todos los clientes companeros a la vez, con el jar corre
 
 - Cada jugador de **Java** debe tener el jar companero correspondiente (incluyelo
   dentro de tu modpack/launcher para que no lo instalen a mano).
-- Java: 17 para 1.20.1, 21 para 1.21.x, 25 para 26.1.2 (servidor y clientes).
+- Java: 17 para 1.20.1, 21 para 1.21.x, 25 para 26.1.2 y 26.3 (servidor y clientes).
 - Dependencias del loader:
   - Fabric -> Fabric Loader + la build de Fabric API para esa version de Minecraft.
   - Forge 1.20.1 -> MinecraftForge 47.x.
-  - NeoForge -> la version de NeoForge del target (21.1.x, 21.8.x o 21.11.x).
+  - NeoForge -> la version de NeoForge del target (21.1.x, 21.8.x, 21.11.x, 26.1.2.x o 26.3.x).
 - Los jugadores de **Bedrock via Geyser/Floodgate quedan exentos
   automaticamente** (no pueden correr mods de Java), asi que nunca son expulsados.
 
@@ -68,8 +70,10 @@ Todo el trabajo ocurre **una vez por entrada**, nunca por tick.
 1. **Entrada -> congelar + reto.** El servidor congela al jugador (se bloquea el
    movimiento y las interacciones, y se le regresa si intenta moverse) y envia un
    **nonce** aleatorio de 32 bytes. Minecraft 26.1 envia los ataques en un
-   paquete aparte; en 26.1.2 ese paquete tambien se bloquea, asi que un jugador
-   congelado no puede atacar, igual que en las demas versiones.
+   paquete aparte; en 26.1.2 y 26.3 ese paquete tambien se bloquea, asi que un
+   jugador congelado no puede atacar, igual que en las demas versiones. En 26.3
+   la respuesta del jugador a un teletransporte tambien lleva una posicion; para
+   jugadores congelados se ignora.
 2. **Reporte del cliente.** El mod companero enumera todos los mods cargados y
    responde con, por mod:
    - `id` - id del mod en el loader
@@ -350,7 +354,7 @@ Con los adaptadores incluidos, las firmas comparan:
 - `ids` - id exacto del mod, sin distinguir mayusculas; renombrar el jar no cambia el id.
 - `packages` - paquete exacto o descendiente separado por un punto, sin distinguir mayusculas. `com.example.cheat` coincide consigo mismo y con `com.example.cheat.client`, pero no con `com.example.cheater`.
 
-El formato y el motor tambien aceptan `mixins` (nombre exacto de config) y `entrypoints` (prefijos con limite de punto), pero los diez adaptadores actuales envian ambas listas vacias. Esas reglas no tienen efecto con el companero actual. Los nombres de archivos jar no se envian y no pueden coincidir con firmas.
+El formato y el motor tambien aceptan `mixins` (nombre exacto de config) y `entrypoints` (prefijos con limite de punto), pero los doce adaptadores actuales envian ambas listas vacias. Esas reglas no tienen efecto con el companero actual. Los nombres de archivos jar no se envian y no pueden coincidir con firmas.
 
 La recopilacion es de mejor esfuerzo y limitada: Fabric solo visita paquetes con clases hasta tres segmentos y usa un limite pequeno; Forge/NeoForge escanean paquetes de clases con un maximo de 64 marcadores por mod. Los paquetes profundos u omitidos pueden no aparecer. El cliente controla todos los reportes.
 
@@ -462,7 +466,7 @@ Los jars por target quedan en el `build/libs/` de cada modulo. Nota de tooling: 
 proyecto fija Gradle 9.4.1 (Fabric Loom, ModDevGradle para NeoForge y el soporte
 legacy de Forge de ModDevGradle para Forge 1.20.1) y usa el foojay toolchain
 resolver para auto-provisionar Java 17/21/25 segun haga falta; corre Gradle con
-JDK 25 (el target 26.1.2 compila para Java 25).
+JDK 25 (los targets 26.1.2 y 26.3 compilan para Java 25).
 
 Estructura del proyecto:
 
@@ -474,6 +478,8 @@ fabric-1.21.8/    Adaptador Fabric 1.21.8
 fabric-1.21.11/   Adaptador Fabric 1.21.11
 fabric-26.1.2/    Adaptador Fabric 26.1.2 (Java 25)
 neoforge-26.1.2/  Adaptador NeoForge 26.1.2 (Java 25)
+fabric-26.3/      Adaptador Fabric 26.3 (Java 25)
+neoforge-26.3/    Adaptador NeoForge 26.3 (Java 25)
 forge-1.20.1/     Adaptador MinecraftForge 1.20.1 (congelado por eventos, SimpleChannel)
 neoforge-1.21.1/  Adaptador NeoForge 1.21.1 (red por payloads, congelado por mixin)
 neoforge-1.21.8/  Adaptador NeoForge 1.21.8

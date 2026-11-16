@@ -25,6 +25,8 @@ da a los admins una vista clara de lo que usa cada jugador.
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-*.jar` |
 | 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-*.jar` |
 | 26.1.2 | NeoForge | 25 | `fiw-anticheat-neoforge-26.1.2-*.jar` |
+| 26.3 | Fabric | 25 | `fiw-anticheat-fabric-26.3-*.jar` |
+| 26.3 | NeoForge | 25 | `fiw-anticheat-neoforge-26.3-*.jar` |
 
 NeoForge no publica un artefacto real para Minecraft 1.20.1 en su Maven actual,
 asi que la version 1.20.1 de la familia Forge usa MinecraftForge 47.x.
@@ -44,7 +46,7 @@ version de Minecraft.
    - Fabric necesita Fabric Loader y Fabric API.
    - Forge 1.20.1 necesita MinecraftForge 47.x.
    - NeoForge necesita la version de NeoForge correspondiente al target.
-   - Minecraft 26.1.2 necesita Java 25 en servidor y clientes.
+   - Minecraft 26.1.2 y 26.3 necesitan Java 25 en servidor y clientes.
 5. Arranca el servidor una vez para generar la configuracion.
 
 La configuracion se crea en:
@@ -350,8 +352,8 @@ Probar el sistema sin expulsar:
 
 ## Build para desarrollo
 
-Corre Gradle con JDK 25 (el target 26.1.2 compila para Java 25). Gradle busca o
-descarga automaticamente los toolchains de Java 17 y 21 para los demas targets.
+Corre Gradle con JDK 25 (los targets 26.1.2 y 26.3 compilan para Java 25). Gradle
+busca o descarga automaticamente los toolchains de Java 17 y 21 para los demas targets.
 
 Comando completo:
 
@@ -366,7 +368,9 @@ Comando completo:
   :fabric-1.21.11:build \
   :neoforge-1.21.11:build \
   :fabric-26.1.2:build \
-  :neoforge-26.1.2:build
+  :neoforge-26.1.2:build \
+  :fabric-26.3:build \
+  :neoforge-26.3:build
 ```
 
 Servidores de prueba:
@@ -382,6 +386,8 @@ Servidores de prueba:
 ./gradlew --configure-on-demand :neoforge-1.21.11:runServer
 ./gradlew --configure-on-demand :fabric-26.1.2:runServer
 ./gradlew --configure-on-demand :neoforge-26.1.2:runServer
+./gradlew --configure-on-demand :fabric-26.3:runServer
+./gradlew --configure-on-demand :neoforge-26.3:runServer
 ```
 
 Los jars de produccion quedan en:

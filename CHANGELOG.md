@@ -2,7 +2,7 @@
 
 All notable changes to **Fiw AntiCheat** are listed here.
 
-## [2.2.1] - Minecraft 1.21.8 and 26.1.2, Forge and NeoForge join fixes
+## [2.2.1] - Minecraft 1.21.8, 26.1.2 and 26.3, Forge and NeoForge join fixes
 
 New Minecraft versions and fixes for players who join without the companion. The network protocol is unchanged: a 2.2.1 server and 2.2.0 companions for the same Minecraft version still work together. Updating the server and players' clients together is still recommended.
 
@@ -11,6 +11,7 @@ New Minecraft versions and fixes for players who join without the companion. The
 ### Added
 - Minecraft 1.21.8 on Fabric and NeoForge (NeoForge 21.8.x, Java 21).
 - Minecraft 26.1.2 on Fabric and NeoForge (Java 25; Fabric also needs Fabric API for 26.1.2). Minecraft 26.1 sends attacks in their own packet; players being verified can't attack there either, the same protection as on the other versions.
+- Minecraft 26.3 on Fabric and NeoForge (Java 25; Fabric also needs Fabric API for 26.3). Players being verified can't attack there either, as on 26.1.2. In 26.3 a player's reply to a teleport also carries a position; for players being verified that position is ignored, so they can't move that way.
 
 ### Changed
 - Forge 1.20.1: a player with the companion installed can now join servers that don't run Fiw AntiCheat. Before, Forge refused the connection.

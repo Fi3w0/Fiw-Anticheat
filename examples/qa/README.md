@@ -1,6 +1,6 @@
 # QA pack
 
-One test pack for the current version (2.2.1), updated in place each release. Use a disposable dedicated server, never a live server's config. Use one of the ten supported targets: Fabric + NeoForge 26.1.2, 1.21.11, 1.21.8, 1.21.1; Fabric + Forge 1.20.1.
+One test pack for the current version (2.2.1), updated in place each release. Use a disposable dedicated server, never a live server's config. Use one of the twelve supported targets: Fabric + NeoForge 26.3, 26.1.2, 1.21.11, 1.21.8, 1.21.1; Fabric + Forge 1.20.1.
 
 ## Build and seed config
 
@@ -10,7 +10,7 @@ From this repository, run Gradle on JDK 25:
 JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home ./gradlew build --stacktrace
 ```
 
-After building, install the matching production jar on the test server and matching companion clients. Fabric also needs Fabric API. 26.1.2 needs Java 25 on the server and the client. Copy only this folder's `config.json` to `config/fiw-mods-api/config.json`, backing up any previous file. The `reported-*.json` files are synthetic input for direct core validation, **not** files loaded by the Minecraft companion or server config loader.
+After building, install the matching production jar on the test server and matching companion clients. Fabric also needs Fabric API. 26.1.2 and 26.3 need Java 25 on the server and the client. Copy only this folder's `config.json` to `config/fiw-mods-api/config.json`, backing up any previous file. The `reported-*.json` files are synthetic input for direct core validation, **not** files loaded by the Minecraft companion or server config loader.
 
 Expected `/fiwmods exempt list` before any command changes:
 
@@ -44,10 +44,11 @@ A successful clean write does not prove crash-during-write behavior. The direct 
 - [ ] On the disposable server only, temporarily add `minecraft` to `detection.banned_mods`, reload, and join with the companion: detect/kick. Restore the original config afterwards. This checks an actual loaded id without installing a cheat.
 - [ ] With the same disposable ban, grant the test player `silent` or `monitor`, reconnect and verify its kick/alert behavior. Remove the grant afterwards.
 - [ ] Join once with active and inactive local test resource packs; inspect both profile sections. Toggle a pack and check history; restart and verify the profile survives.
-- [ ] Fabric 1.21.8, NeoForge 1.21.8, Fabric 26.1.2 and NeoForge 26.1.2: a matching clean companion joins, passes and unfreezes.
-- [ ] NeoForge (1.21.1, 1.21.8, 1.21.11, 26.1.2) and Forge 1.20.1 without the companion (on Forge also a vanilla client): the player connects and stays frozen, the server log shows no errors, and the kick after `timeout_seconds` uses `timeout_message`.
+- [ ] Fabric 1.21.8, NeoForge 1.21.8, Fabric 26.1.2, NeoForge 26.1.2, Fabric 26.3 and NeoForge 26.3: a matching clean companion joins, passes and unfreezes.
+- [ ] NeoForge (1.21.1, 1.21.8, 1.21.11, 26.1.2, 26.3) and Forge 1.20.1 without the companion (on Forge also a vanilla client): the player connects and stays frozen, the server log shows no errors, and the kick after `timeout_seconds` uses `timeout_message`.
 - [ ] NeoForge: `/fiwmods snapshot player <name>` on a player without the companion says they don't have Fiw AntiCheat installed.
-- [ ] 26.1.2: while frozen, hit a mob: it takes no damage.
+- [ ] 26.1.2 and 26.3: while frozen, hit a mob: it takes no damage.
+- [ ] 26.3: while frozen, try to walk away for a few seconds: you keep being snapped back to where you joined, and the server log shows no movement warnings or kicks.
 
 The synthetic `reported-mod-cases.json` exercises real bundled package signatures without installing a cheat. It tests exact/descendant/case-folded matches plus unrelated longer names. It cannot validate what a loader actually collects or sends. `reported-pack-cases.json` uses synthetic hashes to exercise profile persistence, not hashing or network code. Protocol versioning, mixin collection, hashing changes and payload-size work remain deferred.
 

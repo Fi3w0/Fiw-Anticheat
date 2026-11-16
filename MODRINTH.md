@@ -27,6 +27,8 @@ Fiw AntiCheat is an admin enforcement tool and mod verification layer. It is not
 
 | Loader | Minecraft | Status |
 |---|---|---|
+| **Fabric** | **26.3** | Active |
+| **NeoForge** | **26.3** | Active |
 | **Fabric** | **26.1.2** | Active |
 | **NeoForge** | **26.1.2** | Active |
 | **Fabric** | **1.21.11** | Active |
@@ -126,6 +128,8 @@ Main options:
 | NeoForge 1.21.11 | NeoForge 21.11.x, Java 21 |
 | Fabric 26.1.2 | Fabric Loader, Fabric API for 26.1.2, Java 25 |
 | NeoForge 26.1.2 | NeoForge 26.1.2.x, Java 25 |
+| Fabric 26.3 | Fabric Loader, Fabric API for 26.3, Java 25 |
+| NeoForge 26.3 | NeoForge 26.3.x, Java 25 |
 
 Install Fiw AntiCheat on the server and on player clients. The client companion is what reports the mod list and resource pack state to the server. Players without it, including vanilla clients, stay frozen on join and are kicked with your `timeout_message` after `timeout_seconds`.
 

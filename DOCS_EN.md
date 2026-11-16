@@ -37,6 +37,8 @@ The mod is one shared engine plus a thin adapter per loader/version. Pick the
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-<version>.jar` |
 | 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-<version>.jar` |
 | 26.1.2 | NeoForge | 25 | `fiw-anticheat-neoforge-26.1.2-<version>.jar` |
+| 26.3 | Fabric | 25 | `fiw-anticheat-fabric-26.3-<version>.jar` |
+| 26.3 | NeoForge | 25 | `fiw-anticheat-neoforge-26.3-<version>.jar` |
 
 NeoForge does not publish a Minecraft **1.20.1** build on its current Maven
 (earliest is 1.20.2), so the 1.20.1 Forge-family target uses **MinecraftForge
@@ -50,11 +52,11 @@ Update the server and every companion client together, with a jar matching each 
 
 - Every **Java** player must have the matching companion jar (ship it inside your
   modpack / launcher so players don't install it manually).
-- Java: 17 for 1.20.1, 21 for 1.21.x, 25 for 26.1.2 (server and clients).
+- Java: 17 for 1.20.1, 21 for 1.21.x, 25 for 26.1.2 and 26.3 (server and clients).
 - Loader dependencies:
   - Fabric → Fabric Loader + the Fabric API build for that Minecraft version.
   - Forge 1.20.1 → MinecraftForge 47.x.
-  - NeoForge → the NeoForge version matching the target (21.1.x, 21.8.x or 21.11.x).
+  - NeoForge → the NeoForge version matching the target (21.1.x, 21.8.x, 21.11.x, 26.1.2.x or 26.3.x).
 - **Bedrock players via Geyser/Floodgate are exempt automatically** (they can't
   run Java mods), so they are never kicked.
 
@@ -67,8 +69,9 @@ All work happens **once per join**, never per tick.
 1. **Join → freeze + challenge.** The server freezes the player (movement and
    interactions are blocked, they're snapped back if they move) and sends a
    32-byte random **nonce**. Minecraft 26.1 sends attacks in their own packet;
-   on 26.1.2 that packet is blocked too, so frozen players can't attack, as on
-   the other versions.
+   on 26.1.2 and 26.3 that packet is blocked too, so frozen players can't
+   attack, as on the other versions. On 26.3 a player's reply to a teleport
+   also carries a position; for frozen players it is ignored.
 2. **Client report.** The companion mod enumerates every loaded mod and replies
    with, per mod:
    - `id` — loader mod id
@@ -343,7 +346,7 @@ With the shipped adapters, signatures match by:
 - `ids` — exact mod id, case-insensitive; renaming the jar does not change the id.
 - `packages` — case-insensitive exact package or descendant at a dot boundary. `com.example.cheat` matches itself and `com.example.cheat.client`, but not `com.example.cheater`.
 
-The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all ten shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
+The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all twelve shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
 
 Package collection is best effort and bounded: Fabric only visits packages containing classes at up to three segments and uses a small collection cap; Forge/NeoForge scan class packages with a cap of 64 markers per mod. Deeply nested or omitted packages may not be reported. All reports remain client-controlled.
 
@@ -453,7 +456,7 @@ Per-target jars land in each module's `build/libs/`. Build tooling note: the
 project pins Gradle 9.4.1 (Fabric Loom, ModDevGradle for NeoForge and
 ModDevGradle's legacy Forge support for Forge 1.20.1) and uses the foojay
 toolchain resolver to auto-provision Java 17/21/25 as needed; run Gradle on
-JDK 25 (the 26.1.2 target compiles for Java 25).
+JDK 25 (the 26.1.2 and 26.3 targets compile for Java 25).
 
 Project layout:
 
@@ -465,6 +468,8 @@ fabric-1.21.8/    Fabric 1.21.8 adapter
 fabric-1.21.11/   Fabric 1.21.11 adapter
 fabric-26.1.2/    Fabric 26.1.2 adapter (Java 25)
 neoforge-26.1.2/  NeoForge 26.1.2 adapter (Java 25)
+fabric-26.3/      Fabric 26.3 adapter (Java 25)
+neoforge-26.3/    NeoForge 26.3 adapter (Java 25)
 forge-1.20.1/     MinecraftForge 1.20.1 adapter (event-based freeze, SimpleChannel)
 neoforge-1.21.1/  NeoForge 1.21.1 adapter (payload networking, mixin freeze)
 neoforge-1.21.8/  NeoForge 1.21.8 adapter
