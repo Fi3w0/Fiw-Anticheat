@@ -7,9 +7,9 @@
 **Mod verification &amp; enforcement for Minecraft servers — Fabric, Forge &amp; NeoForge**
 
 [![Modrinth](https://img.shields.io/modrinth/dt/fiw-anticheat?logo=modrinth&label=Modrinth&color=00AF5C)](https://modrinth.com/mod/fiw-anticheat)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1%20%7C%201.21.1%20%7C%201.21.11-62B47A)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1%20%7C%201.21.1%20%7C%201.21.8%20%7C%201.21.11%20%7C%2026.1.2-62B47A)
 ![Loaders](https://img.shields.io/badge/Loaders-Fabric%20%C2%B7%20Forge%20%C2%B7%20NeoForge-4C7BF3)
-![Java](https://img.shields.io/badge/Java-17%20%7C%2021-E07B53)
+![Java](https://img.shields.io/badge/Java-17%20%7C%2021%20%7C%2025-E07B53)
 ![License](https://img.shields.io/badge/License-Attribution%20%C2%B7%20Non--Commercial-555555)
 
 </div>
@@ -26,16 +26,17 @@ adapter per loader/version.
 | 1.20.1 | MinecraftForge | `forge-1.20.1` | 17 |
 | 1.21.1 | Fabric | `fabric-1.21.1` | 21 |
 | 1.21.1 | NeoForge | `neoforge-1.21.1` | 21 |
+| 1.21.8 | Fabric | `fabric-1.21.8` | 21 |
+| 1.21.8 | NeoForge | `neoforge-1.21.8` | 21 |
 | 1.21.11 | Fabric | `fabric-1.21.11` | 21 |
 | 1.21.11 | NeoForge | `neoforge-1.21.11` | 21 |
+| 26.1.2 | Fabric | `fabric-26.1.2` | 25 |
 
 NeoForge does not publish a real Minecraft 1.20.1 artifact on the current
 NeoForge Maven. The Forge-family 1.20.1 target is therefore built against
 MinecraftForge 47.x.
 
-Minecraft **1.21.8 is intentionally unsupported in this update**; there is no module or jar for it.
-
-Use the same Fiw AntiCheat release on server and companion clients. Cross-release compatibility is not guaranteed.
+Update the server and companion clients together. 2.2.1 does not change the protocol, so 2.2.0 companions still work with a 2.2.1 server on the same Minecraft version; compatibility with older releases is not guaranteed.
 
 ## What It Does
 
@@ -43,7 +44,8 @@ On player join, the server sends a nonce challenge. A client with the companion
 mod reports its loaded mods, versions, jar fingerprints, and stable code markers.
 It also reports active and inactive resource packs for staff auditing.
 The server evaluates that list, then either unfreezes the player or disconnects
-them.
+them. A player without the companion, including a vanilla client, stays frozen
+and is kicked with `timeout_message` after `timeout_seconds` on every loader.
 
 Main features:
 
@@ -172,9 +174,8 @@ players.
 
 ## Building And Testing
 
-Use Java 21 to run the full multi-project build. Java 17 can build the 1.20.1
-targets with configure-on-demand, but Java 25 is too new for this Gradle/Groovy
-stack.
+Run Gradle on JDK 25 (the 26.1.2 target compiles for Java 25). The Java 17
+and 21 toolchains for the older targets are provisioned automatically.
 
 ```bash
 ./gradlew --configure-on-demand :core:test \
@@ -182,8 +183,11 @@ stack.
   :forge-1.20.1:build \
   :fabric-1.21.1:build \
   :neoforge-1.21.1:build \
+  :fabric-1.21.8:build \
+  :neoforge-1.21.8:build \
   :fabric-1.21.11:build \
-  :neoforge-1.21.11:build
+  :neoforge-1.21.11:build \
+  :fabric-26.1.2:build
 ```
 
 Dev server examples:
@@ -193,8 +197,11 @@ Dev server examples:
 ./gradlew --configure-on-demand :fabric-1.21.1:runServer
 ./gradlew --configure-on-demand :forge-1.20.1:runServer
 ./gradlew --configure-on-demand :fabric-1.20.1:runServer
+./gradlew --configure-on-demand :fabric-1.21.8:runServer
+./gradlew --configure-on-demand :neoforge-1.21.8:runServer
 ./gradlew --configure-on-demand :fabric-1.21.11:runServer
 ./gradlew --configure-on-demand :neoforge-1.21.11:runServer
+./gradlew --configure-on-demand :fabric-26.1.2:runServer
 ```
 
 Production jars are written under each module's `build/libs/` directory.
@@ -207,8 +214,11 @@ fabric-1.20.1/    Fabric 1.20.1 adapter, legacy channel networking
 fabric-1.21.1/    Fabric 1.21.1 adapter, CustomPayload networking
 forge-1.20.1/     MinecraftForge 1.20.1 adapter
 neoforge-1.21.1/  NeoForge 1.21.1 adapter
+fabric-1.21.8/    Fabric 1.21.8 adapter, CustomPayload networking
+neoforge-1.21.8/  NeoForge 1.21.8 adapter
 fabric-1.21.11/   Fabric 1.21.11 adapter, CustomPayload networking
 neoforge-1.21.11/ NeoForge 1.21.11 adapter
+fabric-26.1.2/    Fabric 26.1.2 adapter, CustomPayload networking
 ```
 
 The bundled signature list lives inside the jar. Developers edit `core/src/main/resources/signatures.json` and rebuild; admins use `detection.banned_mods`, `allow_overrides` and presets in `config/fiw-mods-api/config.json`. An admin file at `config/fiw-mods-api/signatures.json` is not loaded. Current companions supply ids and packages, with exact/dot-boundary package matching; mixin/entrypoint lists are empty. See both language guides for collection limits.

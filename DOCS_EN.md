@@ -25,16 +25,17 @@ server evaluates that report and either lets the player in or disconnects them.
 The mod is one shared engine plus a thin adapter per loader/version. Pick the
 **one jar** that matches your server's loader and Minecraft version.
 
-Minecraft **1.21.8 is intentionally unsupported in this update**: there is no 1.21.8 module or jar. Its support in FIW Bosses or Fiw Custom Items does not imply AntiCheat support.
-
 | Minecraft | Loader | Java | Jar |
 |---|---|---:|---|
 | 1.20.1 | Fabric | 17 | `fiw-anticheat-fabric-1.20.1-<version>.jar` |
 | 1.20.1 | MinecraftForge 47.x | 17 | `fiw-anticheat-forge-1.20.1-<version>.jar` |
 | 1.21.1 | Fabric | 21 | `fiw-anticheat-fabric-1.21.1-<version>.jar` |
 | 1.21.1 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.1-<version>.jar` |
+| 1.21.8 | Fabric | 21 | `fiw-anticheat-fabric-1.21.8-<version>.jar` |
+| 1.21.8 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.8-<version>.jar` |
 | 1.21.11 | Fabric | 21 | `fiw-anticheat-fabric-1.21.11-<version>.jar` |
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-<version>.jar` |
+| 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-<version>.jar` |
 
 NeoForge does not publish a Minecraft **1.20.1** build on its current Maven
 (earliest is 1.20.2), so the 1.20.1 Forge-family target uses **MinecraftForge
@@ -44,14 +45,15 @@ NeoForge does not publish a Minecraft **1.20.1** build on its current Maven
 
 ## 2. Requirements
 
-Use the same Fiw AntiCheat release on the server and every companion client, with a jar matching each side’s loader and Minecraft version. Cross-release companion/server compatibility is not guaranteed; this update does not change the protocol.
+Update the server and every companion client together, with a jar matching each side’s loader and Minecraft version. 2.2.1 does not change the protocol: 2.2.0 companions still work with a 2.2.1 server on the same Minecraft version. Compatibility with releases older than 2.2.0 is not guaranteed.
 
 - Every **Java** player must have the matching companion jar (ship it inside your
   modpack / launcher so players don't install it manually).
+- Java: 17 for 1.20.1, 21 for 1.21.x, 25 for 26.1.2 (server and clients).
 - Loader dependencies:
-  - Fabric → Fabric Loader + Fabric API.
+  - Fabric → Fabric Loader + the Fabric API build for that Minecraft version.
   - Forge 1.20.1 → MinecraftForge 47.x.
-  - NeoForge → the NeoForge version matching the target.
+  - NeoForge → the NeoForge version matching the target (21.1.x, 21.8.x or 21.11.x).
 - **Bedrock players via Geyser/Floodgate are exempt automatically** (they can't
   run Java mods), so they are never kicked.
 
@@ -63,7 +65,9 @@ All work happens **once per join**, never per tick.
 
 1. **Join → freeze + challenge.** The server freezes the player (movement and
    interactions are blocked, they're snapped back if they move) and sends a
-   32-byte random **nonce**.
+   32-byte random **nonce**. Minecraft 26.1 sends attacks in their own packet;
+   on 26.1.2 that packet is blocked too, so frozen players can't attack, as on
+   the other versions.
 2. **Client report.** The companion mod enumerates every loaded mod and replies
    with, per mod:
    - `id` — loader mod id
@@ -80,7 +84,10 @@ All work happens **once per join**, never per tick.
    - PASS → unfreeze.
    - KICK → disconnect with a generic message; the **real** reason/mod is logged
      to console and (optionally) sent to online staff.
-   - No reply within `timeout_seconds` → kicked with the timeout message.
+   - No reply within `timeout_seconds` → kicked with the timeout message. This
+     is also what happens to players without the companion (including vanilla
+     clients) on every loader: they can connect, stay frozen, and are kicked
+     with `timeout_message`.
    - A reply with the wrong nonce → kicked; a reply after `timeout_seconds` →
      kicked with the timeout message. Each nonce works once.
 4. **Exemptions** (Floodgate Bedrock + bypass list) skip the whole process.
@@ -335,7 +342,7 @@ With the shipped adapters, signatures match by:
 - `ids` — exact mod id, case-insensitive; renaming the jar does not change the id.
 - `packages` — case-insensitive exact package or descendant at a dot boundary. `com.example.cheat` matches itself and `com.example.cheat.client`, but not `com.example.cheater`.
 
-The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all six shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
+The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all nine shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
 
 Package collection is best effort and bounded: Fabric only visits packages containing classes at up to three segments and uses a small collection cap; Forge/NeoForge scan class packages with a cap of 64 markers per mod. Deeply nested or omitted packages may not be reported. All reports remain client-controlled.
 
@@ -413,7 +420,7 @@ With profiling enabled, `config/fiw-mods-api/profiles/<uuid>.json` stores the pl
 |---|---|
 | `/fiwmods reload` | Re-read `config/fiw-mods-api/config.json` and reload bundled signatures from the installed jar; no external signatures file is read |
 | `/fiwmods snapshot server` | Capture the **server's own** loaded mods as the whitelist |
-| `/fiwmods snapshot player <name>` | Capture an online player's reported mods as the whitelist |
+| `/fiwmods snapshot player <name>` | Capture an online player's reported mods as the whitelist. On NeoForge, a player without the companion gets a "does not have Fiw AntiCheat installed" reply instead of a capture attempt. |
 | `/fiwmods recheck player <name>` | Re-run the mod check on an online player without freezing them. A bad or missing reply kicks them, as on join. Skips exempt players and players already being verified. |
 | `/fiwmods recheck all` | Same for every online player, e.g. after changing the ban list and running `/fiwmods reload`. |
 | `/fiwmods profile <name>` | Show a player's grouped current mods, resource packs, and recent history |
@@ -436,15 +443,16 @@ pack sets are sent to the server.
 ## 12. Building from source
 
 ```bash
-# Use Java 21 to run the full multi-project build.
+# Run Gradle on JDK 25 for the full multi-project build.
 ./gradlew build          # builds core + every loader target
 ./gradlew :core:test     # run the engine unit tests
 ```
 
 Per-target jars land in each module's `build/libs/`. Build tooling note: the
-project pins Gradle 8.10.2 (Loom/ForgeGradle/NeoForge compatibility) and uses
-the foojay toolchain resolver to auto-provision Java 17/21 as needed; the Gradle
-daemon must run on Java 21 (Loom requires it for the 1.21.x targets).
+project pins Gradle 9.4.1 (Fabric Loom, ModDevGradle for NeoForge and
+ModDevGradle's legacy Forge support for Forge 1.20.1) and uses the foojay
+toolchain resolver to auto-provision Java 17/21/25 as needed; run Gradle on
+JDK 25 (the 26.1.2 target compiles for Java 25).
 
 Project layout:
 
@@ -452,9 +460,12 @@ Project layout:
 core/             Pure-Java engine: config, signatures, evaluation, profiles (+ tests)
 fabric-1.20.1/    Fabric 1.20.1 adapter (legacy channel networking)
 fabric-1.21.1/    Fabric 1.21.1 adapter (CustomPayload networking)
+fabric-1.21.8/    Fabric 1.21.8 adapter
 fabric-1.21.11/   Fabric 1.21.11 adapter
+fabric-26.1.2/    Fabric 26.1.2 adapter (Java 25)
 forge-1.20.1/     MinecraftForge 1.20.1 adapter (event-based freeze, SimpleChannel)
 neoforge-1.21.1/  NeoForge 1.21.1 adapter (payload networking, mixin freeze)
+neoforge-1.21.8/  NeoForge 1.21.8 adapter
 neoforge-1.21.11/ NeoForge 1.21.11 adapter
 ```
 
@@ -464,6 +475,9 @@ neoforge-1.21.11/ NeoForge 1.21.11 adapter
 
 - **Legit players randomly kicked on join** → raise `timeout_seconds`; slow
   connections may not answer in time.
+- **Players without the companion (or vanilla clients) see the timeout
+  message** → expected on every loader. Word `timeout_message` so it also
+  tells players to install your modpack or the companion jar.
 - **A nested/dependency sub-mod gets flagged** → add its id to `allow_overrides`,
   or use a less strict preset.
 - **Auto-updating mods (e.g. Essential) break whitelist mode** → pin them via a

@@ -27,16 +27,19 @@ Fiw AntiCheat is an admin enforcement tool and mod verification layer. It is not
 
 | Loader | Minecraft | Status |
 |---|---|---|
-| **Fabric** | **1.21.1** | Active |
-| **NeoForge** | **1.21.1** | Active |
+| **Fabric** | **26.1.2** | Active |
 | **Fabric** | **1.21.11** | Active |
 | **NeoForge** | **1.21.11** | Active |
+| **Fabric** | **1.21.8** | Active |
+| **NeoForge** | **1.21.8** | Active |
+| **Fabric** | **1.21.1** | Active |
+| **NeoForge** | **1.21.1** | Active |
 | **Fabric** | **1.20.1** | Active |
 | **MinecraftForge** | **1.20.1** | Active |
 
 NeoForge does not publish a real Minecraft 1.20.1 artifact on the current NeoForge Maven, so the 1.20.1 Forge-family build targets MinecraftForge 47.x.
 
-There is no Minecraft 1.21.8 build. Use the same Fiw AntiCheat version on the server and on players' clients.
+Update Fiw AntiCheat on the server and on players' clients together. 2.2.1 keeps the same protocol, so 2.2.0 companions still work with a 2.2.1 server on the same Minecraft version.
 
 ---
 
@@ -116,10 +119,13 @@ Main options:
 | MinecraftForge 1.20.1 | Forge 47.x, Java 17 |
 | Fabric 1.21.1 | Fabric Loader, Fabric API, Java 21 |
 | NeoForge 1.21.1 | NeoForge 21.1.x, Java 21 |
+| Fabric 1.21.8 | Fabric Loader, Fabric API, Java 21 |
+| NeoForge 1.21.8 | NeoForge 21.8.x, Java 21 |
 | Fabric 1.21.11 | Fabric Loader 0.19.2+, Fabric API 0.141.4+1.21.11, Java 21 |
 | NeoForge 1.21.11 | NeoForge 21.11.x, Java 21 |
+| Fabric 26.1.2 | Fabric Loader, Fabric API for 26.1.2, Java 25 |
 
-Install Fiw AntiCheat on the server and on player clients. The client companion is what reports the mod list and resource pack state to the server.
+Install Fiw AntiCheat on the server and on player clients. The client companion is what reports the mod list and resource pack state to the server. Players without it, including vanilla clients, stay frozen on join and are kicked with your `timeout_message` after `timeout_seconds`.
 
 ---
 
@@ -136,7 +142,7 @@ Install Fiw AntiCheat on the server and on player clients. The client companion 
 
 ## What data is collected
 
-The server receives each player's mod ids, versions, SHA-256 hashes and package markers, plus their active **and inactive** resource packs (id, name, hash, status). Profiles in `config/fiw-mods-api/profiles/` keep the player's name and UUID, visits, mod ids and versions, packs, and change/detection history; mod hashes and package markers are not stored in profiles. Whitelist snapshots store mod hashes in `config.json`, and logs can contain detections and changes. Profiles have no automatic expiry. Profiling and pack auditing can be turned off in the config.
+The server receives each player's mod ids, versions, SHA-256 hashes and package markers, plus their active **and inactive** resource packs (id, name, hash, status). Profiles in `config/fiw-mods-api/profiles/` keep the player's name and UUID, visits, mod ids and versions, packs, and change/detection history; mod hashes and package markers are not stored in profiles. Whitelist snapshots store mod hashes in `config.json`, and logs can contain detections and changes. `profiling.retention_days` deletes profiles of players not seen for that many days (`0`, the default, keeps them forever). Profiling and pack auditing can be turned off in the config.
 
 ---
 

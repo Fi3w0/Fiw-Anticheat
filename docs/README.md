@@ -19,11 +19,18 @@ da a los admins una vista clara de lo que usa cada jugador.
 | 1.20.1 | MinecraftForge 47.x | 17 | `fiw-anticheat-forge-1.20.1-*.jar` |
 | 1.21.1 | Fabric | 21 | `fiw-anticheat-fabric-1.21.1-*.jar` |
 | 1.21.1 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.1-*.jar` |
+| 1.21.8 | Fabric | 21 | `fiw-anticheat-fabric-1.21.8-*.jar` |
+| 1.21.8 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.8-*.jar` |
 | 1.21.11 | Fabric | 21 | `fiw-anticheat-fabric-1.21.11-*.jar` |
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-*.jar` |
+| 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-*.jar` |
 
 NeoForge no publica un artefacto real para Minecraft 1.20.1 en su Maven actual,
 asi que la version 1.20.1 de la familia Forge usa MinecraftForge 47.x.
+
+Actualiza el servidor y los clientes a la vez. 2.2.1 no cambia el protocolo, asi
+que los clientes con 2.2.0 siguen funcionando con un servidor 2.2.1 de la misma
+version de Minecraft.
 
 ## Instalacion
 
@@ -36,6 +43,7 @@ asi que la version 1.20.1 de la familia Forge usa MinecraftForge 47.x.
    - Fabric necesita Fabric Loader y Fabric API.
    - Forge 1.20.1 necesita MinecraftForge 47.x.
    - NeoForge necesita la version de NeoForge correspondiente al target.
+   - Minecraft 26.1.2 necesita Java 25 en servidor y clientes.
 5. Arranca el servidor una vez para generar la configuracion.
 
 La configuracion se crea en:
@@ -61,7 +69,10 @@ Al entrar un jugador:
    blacklist/whitelist y excepciones.
 4. Si pasa la verificacion, el jugador queda liberado.
 5. Si falla, se expulsa al jugador con `kick_message`.
-6. Si no responde a tiempo, se expulsa con `timeout_message`.
+6. Si no responde a tiempo, se expulsa con `timeout_message`. Lo mismo pasa en
+   todos los loaders si el jugador no tiene Fiw AntiCheat (o usa un cliente
+   vanilla): puede conectarse, queda congelado y se le expulsa tras
+   `timeout_seconds`.
 
 Si el jugador entra desde Floodgate/Geyser y `exemptions.floodgate_auto` esta
 activado, el mod intenta eximirlo automaticamente.
@@ -338,8 +349,8 @@ Probar el sistema sin expulsar:
 
 ## Build para desarrollo
 
-Usa Java 21 para el proyecto completo. Java 17 sirve para targets 1.20.1 con
-`--configure-on-demand`, pero Java 25 rompe esta version de Gradle/Groovy.
+Corre Gradle con JDK 25 (el target 26.1.2 compila para Java 25). Gradle busca o
+descarga automaticamente los toolchains de Java 17 y 21 para los demas targets.
 
 Comando completo:
 
@@ -349,8 +360,11 @@ Comando completo:
   :forge-1.20.1:build \
   :fabric-1.21.1:build \
   :neoforge-1.21.1:build \
+  :fabric-1.21.8:build \
+  :neoforge-1.21.8:build \
   :fabric-1.21.11:build \
-  :neoforge-1.21.11:build
+  :neoforge-1.21.11:build \
+  :fabric-26.1.2:build
 ```
 
 Servidores de prueba:
@@ -360,8 +374,11 @@ Servidores de prueba:
 ./gradlew --configure-on-demand :forge-1.20.1:runServer
 ./gradlew --configure-on-demand :fabric-1.21.1:runServer
 ./gradlew --configure-on-demand :neoforge-1.21.1:runServer
+./gradlew --configure-on-demand :fabric-1.21.8:runServer
+./gradlew --configure-on-demand :neoforge-1.21.8:runServer
 ./gradlew --configure-on-demand :fabric-1.21.11:runServer
 ./gradlew --configure-on-demand :neoforge-1.21.11:runServer
+./gradlew --configure-on-demand :fabric-26.1.2:runServer
 ```
 
 Los jars de produccion quedan en:
