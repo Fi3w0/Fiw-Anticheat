@@ -1,0 +1,196 @@
+package dev.fiw.modsapi.command;
+
+import com.mojang.authlib.GameProfile;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import dev.fiw.modsapi.FiwModsApi;
+import dev.fiw.modsapi.ModEnumerator;
+import dev.fiw.modsapi.core.exemption.ExemptionTier;
+import dev.fiw.modsapi.core.exemption.ExemptionView;
+import dev.fiw.modsapi.core.model.ModEntry;
+import dev.fiw.modsapi.core.profile.PlayerProfile;
+import dev.fiw.modsapi.core.profile.ProfileView;
+import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
+
+/** {@code /fiwmods reload | snapshot server | snapshot player <name> | profile <name> | exempt add|remove|list} (OP 4). */
+public final class FiwModsCommand {
+
+    private FiwModsCommand() {}
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("fiwmods")
+                .requires(src -> src.hasPermission(4))
+                .then(Commands.literal("reload").executes(FiwModsCommand::reload))
+                .then(Commands.literal("snapshot")
+                        .then(Commands.literal("server").executes(FiwModsCommand::snapshotServer))
+                        .then(Commands.literal("player")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .executes(FiwModsCommand::snapshotPlayer))))
+                .then(Commands.literal("recheck")
+                        .then(Commands.literal("all").executes(FiwModsCommand::recheckAll))
+                        .then(Commands.literal("player")
+                                .then(Commands.argument("name", StringArgumentType.word())
+                                        .executes(FiwModsCommand::recheckPlayer))))
+                .then(Commands.literal("profile")
+                        .then(Commands.argument("name", StringArgumentType.word())
+                                .executes(FiwModsCommand::profile)))
+                .then(Commands.literal("exempt")
+                        .then(Commands.literal("add")
+                                .then(Commands.argument("player", StringArgumentType.word())
+                                        .then(Commands.argument("tier", StringArgumentType.word())
+                                                .executes(ctx -> exemptAdd(ctx, null, null))
+                                                .then(Commands.argument("hours", IntegerArgumentType.integer(0))
+                                                        .executes(ctx -> exemptAdd(ctx,
+                                                                IntegerArgumentType.getInteger(ctx, "hours"), null))
+                                                        .then(Commands.argument("preset", StringArgumentType.word())
+                                                                .executes(ctx -> exemptAdd(ctx,
+                                                                        IntegerArgumentType.getInteger(ctx, "hours"),
+                                                                        StringArgumentType.getString(ctx, "preset"))))))))
+                        .then(Commands.literal("remove")
+                                .then(Commands.argument("player", StringArgumentType.word())
+                                        .executes(FiwModsCommand::exemptRemove)))
+                        .then(Commands.literal("list").executes(FiwModsCommand::exemptList))));
+    }
+
+    private static int reload(CommandContext<CommandSourceStack> ctx) {
+        FiwModsApi.engine().reload();
+        ctx.getSource().sendSuccess(() -> Component.literal("[FiwAntiCheat] Config + signatures reloaded."), true);
+        return 1;
+    }
+
+    private static int snapshotServer(CommandContext<CommandSourceStack> ctx) {
+        List<ModEntry> mods = ModEnumerator.collect();
+        FiwModsApi.engine().captureSnapshot(mods, "server");
+        ctx.getSource().sendSuccess(
+                () -> Component.literal("[FiwAntiCheat] Captured " + mods.size() + " server mods into the whitelist."), true);
+        return 1;
+    }
+
+    private static int snapshotPlayer(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        ServerPlayer target = ctx.getSource().getServer().getPlayerList().getPlayerByName(name);
+        if (target == null) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] Player '" + name + "' is not online."));
+            return 0;
+        }
+        if (!FiwModsApi.sendCaptureChallenge(target)) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] " + name
+                    + " is still being verified. Try again in a few seconds."));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(
+                () -> Component.literal("[FiwAntiCheat] Requested mod snapshot from " + name + "…"), true);
+        return 1;
+    }
+
+    private static int recheckPlayer(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        ServerPlayer target = ctx.getSource().getServer().getPlayerList().getPlayerByName(name);
+        if (target == null) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] Player '" + name + "' is not online."));
+            return 0;
+        }
+        String skipped = FiwModsApi.recheck(target);
+        if (skipped != null) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] Not re-checking " + name + ": " + skipped + "."));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal("[FiwAntiCheat] Re-checking " + name + "."), true);
+        return 1;
+    }
+
+    private static int recheckAll(CommandContext<CommandSourceStack> ctx) {
+        int sent = 0;
+        int skipped = 0;
+        for (ServerPlayer player : List.copyOf(ctx.getSource().getServer().getPlayerList().getPlayers())) {
+            if (FiwModsApi.recheck(player) == null) sent++;
+            else skipped++;
+        }
+        String summary = "[FiwAntiCheat] Re-checking " + sent + " online player(s)"
+                + (skipped > 0 ? "; skipped " + skipped + " (exempt or already being verified)." : ".");
+        ctx.getSource().sendSuccess(() -> Component.literal(summary), true);
+        return sent;
+    }
+
+    private static int profile(CommandContext<CommandSourceStack> ctx) {
+        String name = StringArgumentType.getString(ctx, "name");
+        Optional<GameProfile> gp = ctx.getSource().getServer().getProfileCache().get(name);
+        if (gp.isEmpty()) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] Unknown player '" + name + "'."));
+            return 0;
+        }
+        UUID uuid = gp.get().getId();
+        PlayerProfile p = FiwModsApi.engine().profiles().load(uuid);
+        if (p == null) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] No profile recorded for " + name + " yet."));
+            return 0;
+        }
+        for (ProfileView.CommandLine line : ProfileView.commandRows(p, name)) {
+            ctx.getSource().sendSuccess(() -> profileLine(line), false);
+        }
+        return 1;
+    }
+
+    private static int exemptAdd(CommandContext<CommandSourceStack> ctx, Integer hours, String preset) {
+        String player = StringArgumentType.getString(ctx, "player");
+        String tierArg = StringArgumentType.getString(ctx, "tier");
+        ExemptionTier tier = ExemptionTier.fromString(tierArg);
+        if (tier == null) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] Unknown tier '" + tierArg
+                    + "' — expected bypass, silent, monitor, quiet_kick, preset, or force_block."));
+            return 0;
+        }
+        String err = FiwModsApi.engine().addExemption(player, tier, preset, hours);
+        if (err != null) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] " + err));
+            return 0;
+        }
+        String durationText = (hours != null && hours > 0) ? " for " + hours + "h" : " (permanent)";
+        ctx.getSource().sendSuccess(() -> Component.literal("[FiwAntiCheat] Granted '"
+                + tier.name().toLowerCase(Locale.ROOT) + "' exemption to " + player + durationText), true);
+        return 1;
+    }
+
+    private static int exemptRemove(CommandContext<CommandSourceStack> ctx) {
+        String player = StringArgumentType.getString(ctx, "player");
+        if (!FiwModsApi.engine().removeExemption(player)) {
+            ctx.getSource().sendFailure(Component.literal("[FiwAntiCheat] No exemption found for '" + player + "'."));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal("[FiwAntiCheat] Removed exemption for " + player + "."), true);
+        return 1;
+    }
+
+    private static int exemptList(CommandContext<CommandSourceStack> ctx) {
+        for (ExemptionView.CommandLine line : FiwModsApi.engine().listExemptions()) {
+            ctx.getSource().sendSuccess(() -> Component.literal(line.text()), false);
+        }
+        return 1;
+    }
+
+    private static Component profileLine(ProfileView.CommandLine line) {
+        ChatFormatting color = switch (line.type()) {
+            case HEADER -> ChatFormatting.AQUA;
+            case MODS -> ChatFormatting.GREEN;
+            case PLATFORM -> ChatFormatting.DARK_GRAY;
+            case RESOURCE_PACKS_ACTIVE -> ChatFormatting.GOLD;
+            case RESOURCE_PACKS_INACTIVE -> ChatFormatting.GRAY;
+            case CHANGES -> ChatFormatting.GOLD;
+            case EVENT -> ChatFormatting.YELLOW;
+            case EMPTY -> ChatFormatting.GRAY;
+        };
+        Component text = Component.literal(line.text()).withStyle(color);
+        return line.type() == ProfileView.LineType.HEADER ? text.copy().withStyle(color, ChatFormatting.BOLD) : text;
+    }
+}

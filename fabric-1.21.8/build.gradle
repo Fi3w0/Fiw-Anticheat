@@ -1,0 +1,56 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+evaluationDependsOn(':core')
+
+base {
+    archivesName = "${project.archives_base_name}-fabric-1.21.8"
+}
+
+repositories {
+    mavenCentral()
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        "fiw-mods-api" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+dependencies {
+    // Mojang's official names, like the NeoForge modules and the 26.1.2 module.
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation project(':core')
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+jar {
+    from project(':core').sourceSets.main.output
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
