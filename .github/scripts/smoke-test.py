@@ -234,6 +234,8 @@ def main():
     (work / "server.properties").write_text(
         f"server-ip=127.0.0.1\nserver-port={port}\nonline-mode=false\nview-distance=2\nsimulation-distance=2\n"
         "generate-structures=false\nallow-flight=true\npause-when-empty-seconds=-1\nmax-tick-time=-1\n"
+        # Minecraft 26.3 turns the whitelist on by default; test clients must be able to join.
+        "white-list=false\n"
         # A fixed world makes every failure reproducible instead of depending on random terrain.
         "level-seed=fiw-production-verification\n")
     checks = json.loads((ROOT / ".github/boot/smoke.json").read_text())
