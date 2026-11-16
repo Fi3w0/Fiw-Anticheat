@@ -36,6 +36,7 @@ The mod is one shared engine plus a thin adapter per loader/version. Pick the
 | 1.21.11 | Fabric | 21 | `fiw-anticheat-fabric-1.21.11-<version>.jar` |
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-<version>.jar` |
 | 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-<version>.jar` |
+| 26.1.2 | NeoForge | 25 | `fiw-anticheat-neoforge-26.1.2-<version>.jar` |
 
 NeoForge does not publish a Minecraft **1.20.1** build on its current Maven
 (earliest is 1.20.2), so the 1.20.1 Forge-family target uses **MinecraftForge
@@ -342,7 +343,7 @@ With the shipped adapters, signatures match by:
 - `ids` — exact mod id, case-insensitive; renaming the jar does not change the id.
 - `packages` — case-insensitive exact package or descendant at a dot boundary. `com.example.cheat` matches itself and `com.example.cheat.client`, but not `com.example.cheater`.
 
-The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all nine shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
+The schema and core matcher also accept `mixins` (exact config filename) and `entrypoints` (dot-boundary prefixes), but all ten shipped adapters currently send empty lists for both. Those rules therefore have no effect with the current companion. Jar filenames are not sent and cannot match signatures.
 
 Package collection is best effort and bounded: Fabric only visits packages containing classes at up to three segments and uses a small collection cap; Forge/NeoForge scan class packages with a cap of 64 markers per mod. Deeply nested or omitted packages may not be reported. All reports remain client-controlled.
 
@@ -463,6 +464,7 @@ fabric-1.21.1/    Fabric 1.21.1 adapter (CustomPayload networking)
 fabric-1.21.8/    Fabric 1.21.8 adapter
 fabric-1.21.11/   Fabric 1.21.11 adapter
 fabric-26.1.2/    Fabric 26.1.2 adapter (Java 25)
+neoforge-26.1.2/  NeoForge 26.1.2 adapter (Java 25)
 forge-1.20.1/     MinecraftForge 1.20.1 adapter (event-based freeze, SimpleChannel)
 neoforge-1.21.1/  NeoForge 1.21.1 adapter (payload networking, mixin freeze)
 neoforge-1.21.8/  NeoForge 1.21.8 adapter

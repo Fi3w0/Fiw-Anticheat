@@ -1,6 +1,6 @@
 # QA pack
 
-One test pack for the current version (2.2.1), updated in place each release. Use a disposable dedicated server, never a live server's config. Use one of the nine supported targets: Fabric 26.1.2; Fabric + NeoForge 1.21.11, 1.21.8, 1.21.1; Fabric + Forge 1.20.1.
+One test pack for the current version (2.2.1), updated in place each release. Use a disposable dedicated server, never a live server's config. Use one of the ten supported targets: Fabric + NeoForge 26.1.2, 1.21.11, 1.21.8, 1.21.1; Fabric + Forge 1.20.1.
 
 ## Build and seed config
 
@@ -44,8 +44,8 @@ A successful clean write does not prove crash-during-write behavior. The direct 
 - [ ] On the disposable server only, temporarily add `minecraft` to `detection.banned_mods`, reload, and join with the companion: detect/kick. Restore the original config afterwards. This checks an actual loaded id without installing a cheat.
 - [ ] With the same disposable ban, grant the test player `silent` or `monitor`, reconnect and verify its kick/alert behavior. Remove the grant afterwards.
 - [ ] Join once with active and inactive local test resource packs; inspect both profile sections. Toggle a pack and check history; restart and verify the profile survives.
-- [ ] Fabric 1.21.8, NeoForge 1.21.8 and Fabric 26.1.2: a matching clean companion joins, passes and unfreezes.
-- [ ] NeoForge (1.21.1, 1.21.8, 1.21.11) and Forge 1.20.1 without the companion (on Forge also a vanilla client): the player connects and stays frozen, the server log shows no errors, and the kick after `timeout_seconds` uses `timeout_message`.
+- [ ] Fabric 1.21.8, NeoForge 1.21.8, Fabric 26.1.2 and NeoForge 26.1.2: a matching clean companion joins, passes and unfreezes.
+- [ ] NeoForge (1.21.1, 1.21.8, 1.21.11, 26.1.2) and Forge 1.20.1 without the companion (on Forge also a vanilla client): the player connects and stays frozen, the server log shows no errors, and the kick after `timeout_seconds` uses `timeout_message`.
 - [ ] NeoForge: `/fiwmods snapshot player <name>` on a player without the companion says they don't have Fiw AntiCheat installed.
 - [ ] 26.1.2: while frozen, hit a mob: it takes no damage.
 

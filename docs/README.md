@@ -24,6 +24,7 @@ da a los admins una vista clara de lo que usa cada jugador.
 | 1.21.11 | Fabric | 21 | `fiw-anticheat-fabric-1.21.11-*.jar` |
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-*.jar` |
 | 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-*.jar` |
+| 26.1.2 | NeoForge | 25 | `fiw-anticheat-neoforge-26.1.2-*.jar` |
 
 NeoForge no publica un artefacto real para Minecraft 1.20.1 en su Maven actual,
 asi que la version 1.20.1 de la familia Forge usa MinecraftForge 47.x.
@@ -364,7 +365,8 @@ Comando completo:
   :neoforge-1.21.8:build \
   :fabric-1.21.11:build \
   :neoforge-1.21.11:build \
-  :fabric-26.1.2:build
+  :fabric-26.1.2:build \
+  :neoforge-26.1.2:build
 ```
 
 Servidores de prueba:
@@ -379,6 +381,7 @@ Servidores de prueba:
 ./gradlew --configure-on-demand :fabric-1.21.11:runServer
 ./gradlew --configure-on-demand :neoforge-1.21.11:runServer
 ./gradlew --configure-on-demand :fabric-26.1.2:runServer
+./gradlew --configure-on-demand :neoforge-26.1.2:runServer
 ```
 
 Los jars de produccion quedan en:

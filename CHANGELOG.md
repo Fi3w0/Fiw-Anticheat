@@ -10,7 +10,7 @@ New Minecraft versions and fixes for players who join without the companion. The
 
 ### Added
 - Minecraft 1.21.8 on Fabric and NeoForge (NeoForge 21.8.x, Java 21).
-- Minecraft 26.1.2 on Fabric (Java 25, Fabric API for 26.1.2). Minecraft 26.1 sends attacks in their own packet; players being verified can't attack there either, the same protection as on the other versions.
+- Minecraft 26.1.2 on Fabric and NeoForge (Java 25; Fabric also needs Fabric API for 26.1.2). Minecraft 26.1 sends attacks in their own packet; players being verified can't attack there either, the same protection as on the other versions.
 
 ### Changed
 - Forge 1.20.1: a player with the companion installed can now join servers that don't run Fiw AntiCheat. Before, Forge refused the connection.

@@ -37,6 +37,7 @@ el **unico jar** que corresponde al loader y la version de Minecraft del servido
 | 1.21.11 | Fabric | 21 | `fiw-anticheat-fabric-1.21.11-<version>.jar` |
 | 1.21.11 | NeoForge | 21 | `fiw-anticheat-neoforge-1.21.11-<version>.jar` |
 | 26.1.2 | Fabric | 25 | `fiw-anticheat-fabric-26.1.2-<version>.jar` |
+| 26.1.2 | NeoForge | 25 | `fiw-anticheat-neoforge-26.1.2-<version>.jar` |
 
 NeoForge no publica una build de Minecraft **1.20.1** en su Maven actual (la mas
 antigua es 1.20.2), asi que el target 1.20.1 de la familia Forge usa
@@ -349,7 +350,7 @@ Con los adaptadores incluidos, las firmas comparan:
 - `ids` - id exacto del mod, sin distinguir mayusculas; renombrar el jar no cambia el id.
 - `packages` - paquete exacto o descendiente separado por un punto, sin distinguir mayusculas. `com.example.cheat` coincide consigo mismo y con `com.example.cheat.client`, pero no con `com.example.cheater`.
 
-El formato y el motor tambien aceptan `mixins` (nombre exacto de config) y `entrypoints` (prefijos con limite de punto), pero los nueve adaptadores actuales envian ambas listas vacias. Esas reglas no tienen efecto con el companero actual. Los nombres de archivos jar no se envian y no pueden coincidir con firmas.
+El formato y el motor tambien aceptan `mixins` (nombre exacto de config) y `entrypoints` (prefijos con limite de punto), pero los diez adaptadores actuales envian ambas listas vacias. Esas reglas no tienen efecto con el companero actual. Los nombres de archivos jar no se envian y no pueden coincidir con firmas.
 
 La recopilacion es de mejor esfuerzo y limitada: Fabric solo visita paquetes con clases hasta tres segmentos y usa un limite pequeno; Forge/NeoForge escanean paquetes de clases con un maximo de 64 marcadores por mod. Los paquetes profundos u omitidos pueden no aparecer. El cliente controla todos los reportes.
 
@@ -472,6 +473,7 @@ fabric-1.21.1/    Adaptador Fabric 1.21.1 (red CustomPayload)
 fabric-1.21.8/    Adaptador Fabric 1.21.8
 fabric-1.21.11/   Adaptador Fabric 1.21.11
 fabric-26.1.2/    Adaptador Fabric 26.1.2 (Java 25)
+neoforge-26.1.2/  Adaptador NeoForge 26.1.2 (Java 25)
 forge-1.20.1/     Adaptador MinecraftForge 1.20.1 (congelado por eventos, SimpleChannel)
 neoforge-1.21.1/  Adaptador NeoForge 1.21.1 (red por payloads, congelado por mixin)
 neoforge-1.21.8/  Adaptador NeoForge 1.21.8

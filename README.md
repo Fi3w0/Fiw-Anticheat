@@ -31,6 +31,7 @@ adapter per loader/version.
 | 1.21.11 | Fabric | `fabric-1.21.11` | 21 |
 | 1.21.11 | NeoForge | `neoforge-1.21.11` | 21 |
 | 26.1.2 | Fabric | `fabric-26.1.2` | 25 |
+| 26.1.2 | NeoForge | `neoforge-26.1.2` | 25 |
 
 NeoForge does not publish a real Minecraft 1.20.1 artifact on the current
 NeoForge Maven. The Forge-family 1.20.1 target is therefore built against
@@ -187,7 +188,8 @@ and 21 toolchains for the older targets are provisioned automatically.
   :neoforge-1.21.8:build \
   :fabric-1.21.11:build \
   :neoforge-1.21.11:build \
-  :fabric-26.1.2:build
+  :fabric-26.1.2:build \
+  :neoforge-26.1.2:build
 ```
 
 Dev server examples:
@@ -202,6 +204,7 @@ Dev server examples:
 ./gradlew --configure-on-demand :fabric-1.21.11:runServer
 ./gradlew --configure-on-demand :neoforge-1.21.11:runServer
 ./gradlew --configure-on-demand :fabric-26.1.2:runServer
+./gradlew --configure-on-demand :neoforge-26.1.2:runServer
 ```
 
 Production jars are written under each module's `build/libs/` directory.
@@ -219,6 +222,7 @@ neoforge-1.21.8/  NeoForge 1.21.8 adapter
 fabric-1.21.11/   Fabric 1.21.11 adapter, CustomPayload networking
 neoforge-1.21.11/ NeoForge 1.21.11 adapter
 fabric-26.1.2/    Fabric 26.1.2 adapter, CustomPayload networking
+neoforge-26.1.2/  NeoForge 26.1.2 adapter
 ```
 
 The bundled signature list lives inside the jar. Developers edit `core/src/main/resources/signatures.json` and rebuild; admins use `detection.banned_mods`, `allow_overrides` and presets in `config/fiw-mods-api/config.json`. An admin file at `config/fiw-mods-api/signatures.json` is not loaded. Current companions supply ids and packages, with exact/dot-boundary package matching; mixin/entrypoint lists are empty. See both language guides for collection limits.
