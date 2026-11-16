@@ -28,7 +28,7 @@ const channels = loader === 'fabric'
     ? { challenge: 'fiw_mods_api:challenge', response: 'fiw_mods_api:response' }
     : { challenge: 'fiw_mods_api:main', response: 'fiw_mods_api:main' } // Forge: one channel, a discriminator byte first
 
-const TIMEOUT_SECONDS = 8
+const TIMEOUT_SECONDS = 15 // room for the freeze check before the timeout kick
 const KICK = 'QA kick: mod not allowed'
 const TIMEOUT = 'QA timeout: no companion reply'
 
@@ -100,7 +100,7 @@ function challengeNonce(data) {
 // reply: 'clean' | 'banned' | 'wrong' | null (no companion: never answers, never registers).
 function join(name, reply) {
   const bot = mineflayer.createBot({ host: '127.0.0.1', port: Number(port), username: name, auth: 'offline', version })
-  const state = { name, bot, challenges: 0, kicked: null, ended: false, spawned: false }
+  const state = { name, bot, start: mark(), challenges: 0, kicked: null, ended: false, spawned: false }
   if (reply && loader === 'neoforge') {
     // NeoForge only sends payloads on channels the client declared during configuration.
     bot._client.on('state', s => {
@@ -128,14 +128,19 @@ function join(name, reply) {
 // The server log is the authority: a client can lose the kick packet when the connection closes
 // right after it (seen on Forge 1.20.1), so the server's own disconnect line also counts.
 async function kickedWith(state, needle, description, timeout = 15000) {
-  const serverSaid = () => text().includes(`${state.name} lost connection: ${needle}`)
+  const serverSaid = () => text().slice(state.start).includes(`${state.name} lost connection: ${needle}`)
   await until(() => (state.kicked && state.kicked.includes(needle)) || serverSaid(),
     `${description}: kicked with "${needle}" (client saw: ${state.kicked})`, timeout)
 }
+function connected(state, description) {
+  assert(state.bot.entity && !state.kicked && !state.ended, `${description}: still connected (kick: ${state.kicked})`)
+}
 async function stillOnline(state, ms, description) {
   await delay(ms)
-  assert(!state.kicked && !state.ended, `${description}: still connected (kick: ${state.kicked})`)
+  connected(state, description)
 }
+// Only the success output has this header; failures ("Unknown player", "No profile recorded") don't.
+const profileShown = name => command(`fiwmods profile ${name}`, `[FiwAntiCheat] ${name} - `)
 async function leave(state) {
   if (state.ended) return
   const ended = once(state.bot, 'end')
@@ -164,17 +169,21 @@ async function first() {
   // A client without the companion: no server error (the runner fails on any), frozen, timeout kick.
   const none = join('QANoReply', null)
   await until(() => none.spawned || none.kicked, 'client without companion reaches the world')
-  assert(!none.kicked, `client without companion is let in first (kick: ${none.kicked})`)
+  connected(none, 'client without companion is let in first')
   await command('execute at QANoReply run summon minecraft:pig ~1 ~ ~ {NoAI:1b,Tags:["qa_pig"]}')
   const pig = await until(() => Object.values(none.bot.entities).find(e => e.name === 'pig'), 'pig visible to the frozen player')
+  connected(none, 'frozen player before attacking')
   none.bot.attack(pig)
   await delay(500)
   none.bot.attack(pig)
   await delay(1000)
+  connected(none, 'frozen player after attacking (the attacks were really sent)')
   const health = await command('data get entity @e[type=minecraft:pig,tag=qa_pig,limit=1] Health', 'has the following entity data')
   assert.match(health, /has the following entity data: 10(\.0)?f/, 'a frozen player cannot hurt anything')
   await command('kill @e[type=minecraft:pig,tag=qa_pig]')
   await kickedWith(none, TIMEOUT, 'client without companion', (TIMEOUT_SECONDS + 8) * 1000)
+  // NeoForge must not send to a client that never declared the channel (that used to throw).
+  if (loader === 'neoforge') assert.equal(none.challenges, 0, 'NeoForge sends no challenge to a client without the companion')
   emit({ assertion: 'a client without the companion joins, is frozen (cannot attack) and is kicked with timeout_message' })
 
   // The companion answers with a clean list: passes, then an admin recheck passes again.
@@ -194,7 +203,7 @@ async function first() {
   await command('fiwmods recheck player QAClean', 'Re-checking QAClean')
   await logShows(start, 'QAClean passed verification', 'recheck passes again')
   assert.equal(clean.challenges, 2, 'recheck sent a second challenge')
-  await command('fiwmods profile QAClean', 'QAClean')
+  await profileShown('QAClean')
   await leave(clean)
   emit({ assertion: 'companion with clean mods passes and can fight again, recheck challenges an online player, profile is recorded' })
 
@@ -202,8 +211,10 @@ async function first() {
   const cheat = join('QACheat', 'banned')
   await kickedWith(cheat, KICK, 'banned mod')
   await logShows(start, 'QACheat flagged', 'banned mod is logged')
+  start = mark()
   const wrong = join('QAMismatch', 'wrong')
   await kickedWith(wrong, KICK, 'wrong nonce')
+  await logShows(start, 'Nonce mismatch from QAMismatch', 'the wrong nonce is the reason for the kick')
   emit({ assertion: 'a banned mod and a wrong nonce are kicked with kick_message' })
 
   const forced = join('QAForce', 'clean')
@@ -221,6 +232,7 @@ async function restart() {
   await delay(2000)
   const list = (await command('fiwmods exempt list', 'active exemption(s)')).toLowerCase()
   assert(list.includes('qaforce') && list.includes('qasilent'), 'exemption grants survive a restart')
+  await profileShown('QAClean') // saved in the first run; QAClean is offline here
   const start = mark()
   const clean = join('QAClean', 'clean')
   await logShows(start, 'QAClean passed verification', 'clean companion passes after the restart')
